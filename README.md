@@ -22,7 +22,7 @@ To load the extension in Chrome:
 2. Turn on **Developer mode** (upper right).
 3. Click **Load unpacked** and select this project's `dist` folder.
 4. Pin **SDSU Course Schedule Agent** using Chrome's puzzle-piece icon, then click its icon to open the side panel.
-5. Adjust the preferences and click **Generate sample schedules**.
+5. Select the days you can attend, add any busy time blocks with the dropdowns, and click **Generate sample schedules**.
 
 After changing source code, run `npm run build` again and click the extension's **Reload** button on `chrome://extensions`.
 

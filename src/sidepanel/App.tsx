@@ -16,6 +16,10 @@ const initial: Preferences = {
 };
 
 const pretty = (time: string) => new Date(`2000-01-01T${time}:00`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+const timeChoices = Array.from({ length: 65 }, (_, index) => {
+  const minutes = 6 * 60 + index * 15;
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+});
 
 export function App() {
   const [prefs, setPrefs] = useState<Preferences>(initial);
@@ -32,9 +36,14 @@ export function App() {
     setProgress('Ready to plan with example data');
   };
   const toggleDay = (value: Day) => update('unavailableDays', prefs.unavailableDays.includes(value) ? prefs.unavailableDays.filter((item) => item !== value) : [...prefs.unavailableDays, value]);
+  const changeBlockStart = (value: string) => {
+    setBlockStart(value);
+    if (value >= blockEnd) setBlockEnd(timeChoices[Math.min(timeChoices.indexOf(value) + 4, timeChoices.length - 1)]);
+  };
   const addBlock = () => {
     if (blockStart >= blockEnd) { setError('The blocked period must end after it starts.'); return; }
     setError('');
+    if (prefs.unavailableBlocks.some((block) => block.day === day && block.start === blockStart && block.end === blockEnd)) return;
     update('unavailableBlocks', [...prefs.unavailableBlocks, { day, start: blockStart, end: blockEnd }]);
   };
   const generate = () => {
@@ -63,12 +72,17 @@ export function App() {
       <div className="section-title"><span className="step">1</span><h2>Your preferences</h2></div>
       <div className="two-col"><label>Semester<select value={prefs.semester} onChange={(event) => update('semester', event.target.value as Semester)}>{semesters.map((semester) => <option key={semester} value={semester}>{semester}</option>)}</select></label><label>Year<select value={prefs.year} onChange={(event) => update('year', Number(event.target.value))}>{[currentYear, currentYear + 1].map((year) => <option key={year} value={year}>{year}</option>)}</select></label></div>
       <div className="empty" role="status">Sample degree evaluation: <strong>{degreeProgress.remainingUnits} units remaining</strong> across {degreeProgress.remainingCourses.length} courses. This total is calculated from example requirements and will be replaced by your real evaluation after SDSU integration.</div>
-      <div className="field-label">Days you cannot attend</div>
-      <div className="day-buttons">{DAYS.map((value) => <button key={value} type="button" aria-pressed={prefs.unavailableDays.includes(value)} className={prefs.unavailableDays.includes(value) ? 'selected' : ''} onClick={() => toggleDay(value)}>{value}</button>)}</div>
-      <div className="field-label">Time you cannot attend</div>
-      <div className="time-block"><select aria-label="Blocked day" value={day} onChange={(event) => setDay(event.target.value as Day)}>{DAYS.map((value) => <option key={value}>{value}</option>)}</select><input aria-label="Blocked start" type="time" value={blockStart} onChange={(event) => setBlockStart(event.target.value)} /><input aria-label="Blocked end" type="time" value={blockEnd} onChange={(event) => setBlockEnd(event.target.value)} /><button type="button" onClick={addBlock}>Add</button></div>
+      <div className="field-label">Days you can attend class</div>
+      <p className="availability-hint">Green = available. Tap a day to turn it off.</p>
+      <div className="day-buttons" role="group" aria-label="Available days">{DAYS.map((value) => {
+        const available = !prefs.unavailableDays.includes(value);
+        return <button key={value} type="button" aria-pressed={available} className={available ? 'selected' : ''} onClick={() => toggleDay(value)}>{value}</button>;
+      })}</div>
+      <div className="field-label">Busy during part of a day?</div>
+      <p className="availability-hint">Choose a day and time range, then add it. You can remove it below.</p>
+      <div className="time-block"><select aria-label="Busy day" value={day} onChange={(event) => setDay(event.target.value as Day)}>{DAYS.map((value) => <option key={value}>{value}</option>)}</select><select aria-label="Busy from" value={blockStart} onChange={(event) => changeBlockStart(event.target.value)}>{timeChoices.slice(0, -1).map((time) => <option key={time} value={time}>{pretty(time)}</option>)}</select><select aria-label="Busy until" value={blockEnd} onChange={(event) => setBlockEnd(event.target.value)}>{timeChoices.filter((time) => time > blockStart).map((time) => <option key={time} value={time}>{pretty(time)}</option>)}</select><button type="button" onClick={addBlock}>Add</button></div>
       {prefs.unavailableBlocks.length > 0 && <div className="chips">{prefs.unavailableBlocks.map((block, index) => <button key={`${block.day}-${block.start}-${index}`} type="button" onClick={() => update('unavailableBlocks', prefs.unavailableBlocks.filter((_, item) => item !== index))} aria-label={`Remove ${block.day} ${block.start} to ${block.end}`}>{block.day} {pretty(block.start)}–{pretty(block.end)} ×</button>)}</div>}
-      <div className="two-col"><label>Earliest start<input type="time" value={prefs.earliest} onChange={(event) => update('earliest', event.target.value)} /></label><label>Latest end<input type="time" value={prefs.latest} onChange={(event) => update('latest', event.target.value)} /></label></div>
+      <div className="two-col"><label>Earliest class start<select value={prefs.earliest} onChange={(event) => update('earliest', event.target.value)}>{timeChoices.slice(0, -1).map((time) => <option key={time} value={time}>{pretty(time)}</option>)}</select></label><label>Latest class end<select value={prefs.latest} onChange={(event) => update('latest', event.target.value)}>{timeChoices.slice(1).map((time) => <option key={time} value={time}>{pretty(time)}</option>)}</select></label></div>
       <div className="field-label">What matters most?</div>
       <label className="checkbox"><input type="checkbox" checked={prefs.prioritizeDaysOff} onChange={(event) => update('prioritizeDaysOff', event.target.checked)} />More days off</label>
       <label className="checkbox"><input type="checkbox" checked={prefs.prioritizeFewerVisits} onChange={(event) => update('prioritizeFewerVisits', event.target.checked)} />Fewer campus visits</label>
