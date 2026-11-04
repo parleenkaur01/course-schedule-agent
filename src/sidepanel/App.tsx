@@ -3,6 +3,7 @@ import { sampleCourses, sampleDegreeEvaluation, sampleFeedback } from '../fixtur
 import { DAYS, TIME_WINDOWS, type Day, type Preferences, type Schedule, type Semester, type TimeWindowId } from '../models/schedule';
 import { deriveDegreeProgress } from '../scheduler/degreeProgress';
 import { generateSchedules } from '../scheduler/generateSchedules';
+import { checkStudentHomepage, openSdsu, type PortalCheck } from '../sdsu/portal';
 
 const currentYear = new Date().getFullYear();
 const month = new Date().getMonth();
@@ -30,6 +31,19 @@ export function App() {
   const [results, setResults] = useState<Schedule[] | null>(null);
   const [progress, setProgress] = useState('Ready to plan with example data');
   const [error, setError] = useState('');
+  const [portalCheck, setPortalCheck] = useState<PortalCheck | null>(null);
+  const [checkingPortal, setCheckingPortal] = useState(false);
+
+  const checkPortal = async () => {
+    setCheckingPortal(true);
+    try {
+      setPortalCheck(await checkStudentHomepage());
+    } catch {
+      setPortalCheck({ status: 'needs-action', message: 'Could not check this tab. Return to the my.SDSU student homepage and try again.' });
+    } finally {
+      setCheckingPortal(false);
+    }
+  };
 
   const update = <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
     setPrefs((current) => ({ ...current, [key]: value }));
@@ -69,8 +83,16 @@ export function App() {
       <div className="eyebrow">SDSU COURSE SCHEDULE AGENT</div>
       <h1>Make room for your semester.</h1>
       <p>Explore sample schedules around the times that work for you.</p>
-      <div className="demo-badge">DEMO DATA · No SDSU account access yet</div>
+      <div className="demo-badge">SAMPLE SCHEDULES · Live SDSU courses not connected yet</div>
     </header>
+
+    <section className="card portal-card" aria-label="Connect to my.SDSU">
+      <div className="section-title"><span className="step">↗</span><h2>Connect to my.SDSU</h2></div>
+      <p>Open SDSU’s site and sign in there with your SDSUid and Duo. When you reach your student homepage, check that tab here.</p>
+      <div className="portal-actions"><button type="button" onClick={() => { void openSdsu(); }}>Open my.SDSU</button><button type="button" disabled={checkingPortal} onClick={() => { void checkPortal(); }}>{checkingPortal ? 'Checking…' : 'Check student homepage'}</button></div>
+      {portalCheck && <p className={portalCheck.status === 'ready' ? 'portal-ready' : 'portal-help'} role="status">{portalCheck.message}</p>}
+      <small>The check only looks for the two homepage tiles. Sample schedules below still use invented data.</small>
+    </section>
 
     <section className="card" aria-label="Schedule preferences">
       <div className="section-title"><span className="step">1</span><h2>Your preferences</h2></div>
