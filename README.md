@@ -30,7 +30,7 @@ For UI development in a normal browser tab, `npm run dev` opens the side-panel p
 
 ## How this version works
 
-The side panel gathers preferences and calls a deterministic scheduler. The scheduler combines required lecture/lab components, rejects overlaps and blocked hours, and ranks valid combinations. Its data is in `src/fixtures/sampleCourses.ts`. Instructor notes in that file are invented examples and are labeled as such in the UI. There are no API keys, SDSU host permissions, or live site requests in this version.
+The side panel gathers preferences, including a semester and the current or following year, and calls a deterministic scheduler. Changing the term labels the sample results; it does not fetch term-specific offerings yet. The scheduler combines required lecture/lab components, rejects overlaps and blocked hours, and ranks valid combinations. Its data is in `src/fixtures/sampleCourses.ts`. Instructor notes in that file are invented examples and are labeled as such in the UI. There are no API keys, SDSU host permissions, or live site requests in this version.
 
 ## Next milestone
 

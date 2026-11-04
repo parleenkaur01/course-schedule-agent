@@ -1,10 +1,15 @@
 import { useState } from 'react';
 import { sampleCourses, sampleFeedback } from '../fixtures/sampleCourses';
-import { DAYS, type Day, type Preferences, type Schedule } from '../models/schedule';
+import { DAYS, type Day, type Preferences, type Schedule, type Semester } from '../models/schedule';
 import { generateSchedules } from '../scheduler/generateSchedules';
 
+const currentYear = new Date().getFullYear();
+const month = new Date().getMonth();
+const semesters: Semester[] = ['Spring', 'Fall', 'Summer', 'Winter'];
+const currentSemester: Semester = month < 2 || month === 11 ? 'Winter' : month < 5 ? 'Spring' : month < 8 ? 'Summer' : 'Fall';
+
 const initial: Preferences = {
-  semester: 'Sample semester', targetUnits: 10, unavailableDays: [], unavailableBlocks: [],
+  semester: currentSemester, year: currentYear, targetUnits: 10, unavailableDays: [], unavailableBlocks: [],
   earliest: '08:00', latest: '18:00', prioritizeDaysOff: true, prioritizeFewerVisits: true, prioritizeFeedback: false,
 };
 
@@ -22,6 +27,7 @@ export function App() {
   const update = <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
     setPrefs((current) => ({ ...current, [key]: value }));
     setResults(null);
+    setProgress('Ready to plan with example data');
   };
   const toggleDay = (value: Day) => update('unavailableDays', prefs.unavailableDays.includes(value) ? prefs.unavailableDays.filter((item) => item !== value) : [...prefs.unavailableDays, value]);
   const addBlock = () => {
@@ -38,7 +44,7 @@ export function App() {
     window.setTimeout(() => {
       const schedules = generateSchedules(sampleCourses, prefs, sampleFeedback);
       setResults(schedules);
-      setProgress(schedules.length ? `Found ${schedules.length} sample options` : 'No valid sample schedule found');
+      setProgress(schedules.length ? `Found ${schedules.length} sample options for ${prefs.semester} ${prefs.year}` : `No valid sample schedule found for ${prefs.semester} ${prefs.year}`);
     }, 60);
   };
 
@@ -52,7 +58,7 @@ export function App() {
 
     <section className="card" aria-label="Schedule preferences">
       <div className="section-title"><span className="step">1</span><h2>Your preferences</h2></div>
-      <label>Semester<select value={prefs.semester} onChange={(event) => update('semester', event.target.value)}><option>Sample semester</option></select></label>
+      <div className="two-col"><label>Semester<select value={prefs.semester} onChange={(event) => update('semester', event.target.value as Semester)}>{semesters.map((semester) => <option key={semester} value={semester}>{semester}</option>)}</select></label><label>Year<select value={prefs.year} onChange={(event) => update('year', Number(event.target.value))}>{[currentYear, currentYear + 1].map((year) => <option key={year} value={year}>{year}</option>)}</select></label></div>
       <label>Target units<input type="number" min="1" max="21" value={prefs.targetUnits} onChange={(event) => update('targetUnits', Number(event.target.value))} /></label>
       <div className="field-label">Days you cannot attend</div>
       <div className="day-buttons">{DAYS.map((value) => <button key={value} type="button" aria-pressed={prefs.unavailableDays.includes(value)} className={prefs.unavailableDays.includes(value) ? 'selected' : ''} onClick={() => toggleDay(value)}>{value}</button>)}</div>

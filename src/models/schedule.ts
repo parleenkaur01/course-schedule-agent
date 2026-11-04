@@ -1,5 +1,6 @@
 export type Day = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri';
 export const DAYS: Day[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+export type Semester = 'Spring' | 'Summer' | 'Fall' | 'Winter';
 export type Meeting = { day: Day; start: string; end: string; location: 'campus' | 'online' };
 export type Component = 'lecture' | 'lab' | 'discussion';
 export type Section = {
@@ -19,7 +20,8 @@ export type Course = {
 };
 export type Feedback = { instructor: string; note: string; rating: number; source: 'fixture' };
 export type Preferences = {
-  semester: string;
+  semester: Semester;
+  year: number;
   targetUnits: number;
   unavailableDays: Day[];
   unavailableBlocks: { day: Day; start: string; end: string }[];

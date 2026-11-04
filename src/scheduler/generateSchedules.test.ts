@@ -4,7 +4,7 @@ import type { Course, Preferences } from '../models/schedule';
 import { generateSchedules } from './generateSchedules';
 
 const preferences: Preferences = {
-  semester: 'Sample semester', targetUnits: 10, unavailableDays: [], unavailableBlocks: [], earliest: '08:00', latest: '18:00',
+  semester: 'Fall', year: 2026, targetUnits: 10, unavailableDays: [], unavailableBlocks: [], earliest: '08:00', latest: '18:00',
   prioritizeDaysOff: true, prioritizeFewerVisits: true, prioritizeFeedback: false,
 };
 
