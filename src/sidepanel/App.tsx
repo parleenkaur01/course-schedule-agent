@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { sampleCourses, sampleDegreeEvaluation, sampleFeedback } from '../fixtures/sampleCourses';
 import { DAYS, TIME_WINDOWS, type Day, type Preferences, type Schedule, type Semester, type TimeWindowId } from '../models/schedule';
 import { deriveDegreeProgress } from '../scheduler/degreeProgress';
 import { generateSchedules } from '../scheduler/generateSchedules';
-import { checkStudentHomepage, openSdsu, type PortalCheck } from '../sdsu/portal';
+import { PORTAL_ORIGIN, RUN_KEY, type SdsuWorkflow } from '../sdsu/portal';
 
 const currentYear = new Date().getFullYear();
 const month = new Date().getMonth();
@@ -31,17 +31,41 @@ export function App() {
   const [results, setResults] = useState<Schedule[] | null>(null);
   const [progress, setProgress] = useState('Ready to plan with example data');
   const [error, setError] = useState('');
-  const [portalCheck, setPortalCheck] = useState<PortalCheck | null>(null);
-  const [checkingPortal, setCheckingPortal] = useState(false);
+  const [workflow, setWorkflow] = useState<SdsuWorkflow | null>(null);
+  const [portalMessage, setPortalMessage] = useState('Ready to open my.SDSU.');
+  const [startingPortal, setStartingPortal] = useState(false);
 
-  const checkPortal = async () => {
-    setCheckingPortal(true);
+  useEffect(() => {
+    if (typeof chrome === 'undefined' || !chrome.storage?.session) return;
+    void chrome.storage.session.get(RUN_KEY).then((stored) => {
+      setWorkflow((stored[RUN_KEY] as SdsuWorkflow | undefined) ?? null);
+    });
+    const onChanged = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+      if (areaName === 'session' && changes[RUN_KEY]) setWorkflow((changes[RUN_KEY].newValue as SdsuWorkflow | undefined) ?? null);
+    };
+    chrome.storage.onChanged.addListener(onChanged);
+    return () => chrome.storage.onChanged.removeListener(onChanged);
+  }, []);
+
+  const startPortal = async () => {
+    if (typeof chrome === 'undefined' || !chrome.permissions || !chrome.runtime) {
+      setPortalMessage('Load the built extension in Chrome to start the SDSU workflow.');
+      return;
+    }
+    setStartingPortal(true);
     try {
-      setPortalCheck(await checkStudentHomepage());
+      // Request site access directly from the button click, before opening SDSU.
+      const granted = await chrome.permissions.request({ permissions: ['scripting'], origins: [PORTAL_ORIGIN] });
+      if (!granted) {
+        setPortalMessage('Chrome access was not granted. Allow portal access when you are ready to try again.');
+        return;
+      }
+      const response = await chrome.runtime.sendMessage({ type: 'START_SDSU_WORKFLOW' }) as { ok: boolean };
+      if (!response?.ok) setPortalMessage('Could not start the workflow. Reload the extension and try again.');
     } catch {
-      setPortalCheck({ status: 'needs-action', message: 'Could not check this tab. Return to the my.SDSU student homepage and try again.' });
+      setPortalMessage('Could not start the workflow. Reload the extension and try again.');
     } finally {
-      setCheckingPortal(false);
+      setStartingPortal(false);
     }
   };
 
@@ -88,10 +112,10 @@ export function App() {
 
     <section className="card portal-card" aria-label="Connect to my.SDSU">
       <div className="section-title"><span className="step">↗</span><h2>Connect to my.SDSU</h2></div>
-      <p>Open SDSU’s site and sign in there with your SDSUid and Duo. When you reach your student homepage, check that tab here.</p>
-      <div className="portal-actions"><button type="button" onClick={() => { void openSdsu(); }}>Open my.SDSU</button><button type="button" disabled={checkingPortal} onClick={() => { void checkPortal(); }}>{checkingPortal ? 'Checking…' : 'Check student homepage'}</button></div>
-      {portalCheck && <p className={portalCheck.status === 'ready' ? 'portal-ready' : 'portal-help'} role="status">{portalCheck.message}</p>}
-      <small>The check reads only the active tab’s SDSU address, not account content. Sample schedules below still use invented data.</small>
+      <p>Start here, then sign in and complete Duo on SDSU’s pages. Once the student homepage appears, the extension will look for and open Degree Evaluation while showing its progress here.</p>
+      <div className="portal-actions"><button type="button" disabled={startingPortal || workflow?.phase === 'awaiting-sign-in' || workflow?.phase === 'opening-degree-evaluation'} onClick={() => { void startPortal(); }}>{startingPortal ? 'Starting…' : 'Start SDSU workflow'}</button></div>
+      <p className={workflow?.phase === 'tile-clicked' ? 'portal-ready' : 'portal-help'} role="status">{workflow?.message ?? portalMessage}</p>
+      <small>The extension uses only the SDSU portal site to open the tile. Another SDSU sign-in may appear. Sample schedules below still use invented data.</small>
     </section>
 
     <section className="card" aria-label="Schedule preferences">

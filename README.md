@@ -1,6 +1,6 @@
 # SDSU Course Schedule Agent
 
-A Chrome side-panel extension that helps plan course schedules. Its courses, sections, and instructor notes are **fixture data**, not live SDSU or Rate My Professors data. The extension can open the official my.SDSU site and recognize a student-homepage tab after you sign in, but does not read your degree evaluation yet.
+A Chrome side-panel extension that helps plan course schedules. Its courses, sections, and instructor notes are **fixture data**, not live SDSU or Rate My Professors data. The extension can open my.SDSU and open its Degree Evaluation tile after you sign in, but does not read your degree evaluation yet.
 
 ## What you need
 
@@ -26,11 +26,12 @@ To load the extension in Chrome:
 
 ## Try the my.SDSU connection
 
-1. In the side panel, click **Open my.SDSU**. This opens SDSU's official `https://my.sdsu.edu/` page.
-2. Click SDSU's **my.SDSU Login** link. Sign in on SDSU's pages and complete Duo yourself.
-3. When your student homepage is visible, leave that tab active and click **Check student homepage** in the side panel.
-4. Chrome may ask whether to allow the extension to access `cmsweb.cms.sdsu.edu`. This permission is used here only to recognize the active tab's SDSU portal address. The extension does not read or store login fields, credentials, Duo codes, cookies, or student records.
-5. If that tab is on the portal's homepage URL, the panel shows **my.SDSU homepage tab detected**. This does not verify account details or read a degree evaluation.
+1. In the side panel, click **Start SDSU workflow**. Chrome may request access to `cmsweb.cms.sdsu.edu`; grant it to let the extension recognize the portal and open its Degree Evaluation tile. If you already have the student homepage open, the workflow can start there.
+2. Otherwise, the extension opens SDSU's official `https://my.sdsu.edu/` page. Click SDSU's **my.SDSU Login** link. Sign in on SDSU's pages and complete Duo yourself.
+3. Leave the side panel open. It shows **Waiting for you to finish SDSU sign-in and Duo**, then **Student homepage found. Opening Degree Evaluation**, then whether it clicked the tile.
+4. If SDSU prompts for another sign-in or Duo after opening the tile, complete it on SDSU's page. The extension does not read or store login fields, credentials, Duo codes, cookies, or student records.
+
+The workflow waits up to 15 minutes for a student homepage in the same Chrome window. It checks the portal URL and looks only for the Degree Evaluation tile. Clicking the tile is not proof that the evaluation page loaded; that page may use a different SDSU domain, which is not granted access in this milestone.
 
 If the check cannot see the tiles, share only the non-sensitive **hostname** shown in the address bar and the status message in the side panel. Do not share your password, Duo code, student ID, or a full screenshot of your account.
 
@@ -44,4 +45,4 @@ The side panel gathers preferences, including a semester and the current or foll
 
 ## Next milestone
 
-After you confirm the homepage connection in Chrome, we will inspect the Degree Evaluation and Manage Classes pages in your browser session, then implement an extraction adapter. Degree Evaluation may use another domain, so its permission will be added only after the domain is identified. Never share a password or Duo code.
+After you confirm the tile opens in Chrome, we will inspect the Degree Evaluation and Manage Classes pages in your browser session, then implement an extraction adapter. Degree Evaluation may use another domain, so its permission will be added only after the domain is identified. Never share a password or Duo code.

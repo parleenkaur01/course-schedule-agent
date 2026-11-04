@@ -1,31 +1,15 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { checkStudentHomepage } from './portal';
+import { describe, expect, it } from 'vitest';
+import { isPortalLandingPage } from './portal';
 
-afterEach(() => vi.unstubAllGlobals());
-
-describe('checkStudentHomepage', () => {
-  it('recognizes the PeopleSoft landing page using only the active tab URL', async () => {
-    const request = vi.fn().mockResolvedValue(true);
-    const query = vi.fn().mockResolvedValue([{ url: 'https://cmsweb.cms.sdsu.edu/psc/CSDPRD/EMPLOYEE/SA/c/NUI_FRAMEWORK.PT_LANDINGPAGE.GBL?' }]);
-    vi.stubGlobal('chrome', { permissions: { request }, tabs: { query } });
-
-    expect(await checkStudentHomepage()).toEqual({
-      status: 'ready',
-      message: 'my.SDSU homepage tab detected. You can open Degree Evaluation on that page.',
-    });
-    expect(request).toHaveBeenCalledWith({ origins: ['https://cmsweb.cms.sdsu.edu/*'] });
-    expect(query).toHaveBeenCalledWith({ active: true, currentWindow: true });
+describe('isPortalLandingPage', () => {
+  it('recognizes the student homepage URL seen in Chrome', () => {
+    expect(isPortalLandingPage('https://cmsweb.cms.sdsu.edu/psc/CSDPRD/EMPLOYEE/SA/c/NUI_FRAMEWORK.PT_LANDINGPAGE.GBL?')).toBe(true);
   });
 
-  it('does not call the tab API when site access is declined', async () => {
-    const query = vi.fn();
-    vi.stubGlobal('chrome', { permissions: { request: vi.fn().mockResolvedValue(false) }, tabs: { query } });
-    expect((await checkStudentHomepage()).status).toBe('needs-action');
-    expect(query).not.toHaveBeenCalled();
-  });
-
-  it('does not accept an unrelated active tab', async () => {
-    vi.stubGlobal('chrome', { permissions: { request: vi.fn().mockResolvedValue(true) }, tabs: { query: vi.fn().mockResolvedValue([{ url: 'https://example.com/' }]) } });
-    expect((await checkStudentHomepage()).status).toBe('needs-action');
+  it('does not treat the public site, sign-in site, or unrelated hosts as the student homepage', () => {
+    expect(isPortalLandingPage('https://my.sdsu.edu/')).toBe(false);
+    expect(isPortalLandingPage('https://cmsweb.cms.sdsu.edu/psc/CSDPRD/EMPLOYEE/SA/s/WEBLIB_PTBR.ISCRIPT1.FieldFormula.IScript_StartPage')).toBe(false);
+    expect(isPortalLandingPage('https://example.com/psc/PT_LANDINGPAGE.GBL')).toBe(false);
+    expect(isPortalLandingPage(undefined)).toBe(false);
   });
 });
