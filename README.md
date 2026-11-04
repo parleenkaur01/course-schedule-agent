@@ -1,5 +1,37 @@
 # SDSU Course Schedule Agent
 
-Chrome extension for planning SDSU course schedules around degree requirements, availability, and preferences.
+A Chrome side-panel extension that helps plan course schedules. This first milestone is a **fixture demo**: its courses, sections, and instructor notes are examples, not live SDSU or Rate My Professors data. It does not access your SDSU account yet.
 
-The project is currently being initialized. The first implementation milestone will be a local demo with fixture data before live SDSU browser automation is added.
+## What you need
+
+- Node.js 20.19+ and npm
+- Google Chrome 114+
+
+## Run locally
+
+```bash
+npm install
+npm run check
+npm test
+npm run build
+```
+
+To load the extension in Chrome:
+
+1. Open `chrome://extensions`.
+2. Turn on **Developer mode** (upper right).
+3. Click **Load unpacked** and select this project's `dist` folder.
+4. Pin **SDSU Course Schedule Agent** using Chrome's puzzle-piece icon, then click its icon to open the side panel.
+5. Adjust the preferences and click **Generate sample schedules**.
+
+After changing source code, run `npm run build` again and click the extension's **Reload** button on `chrome://extensions`.
+
+For UI development in a normal browser tab, `npm run dev` opens the side-panel page at Vite's local URL. The Chrome side-panel behavior itself is tested by loading `dist` as above.
+
+## How this version works
+
+The side panel gathers preferences and calls a deterministic scheduler. The scheduler combines required lecture/lab components, rejects overlaps and blocked hours, and ranks valid combinations. Its data is in `src/fixtures/sampleCourses.ts`. Instructor notes in that file are invented examples and are labeled as such in the UI. There are no API keys, SDSU host permissions, or live site requests in this version.
+
+## Next milestone
+
+After you sign in normally on my.SDSU, we will inspect the real Degree Evaluation and Manage Classes pages in your browser session, then implement an extraction adapter. We will ask for only the relevant browser permissions once the actual domains and page structure are known. Never share a password or Duo code.
