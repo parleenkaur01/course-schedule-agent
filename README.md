@@ -1,6 +1,6 @@
 # SDSU Course Schedule Agent
 
-A Chrome side-panel extension that helps plan course schedules. Its courses, sections, and instructor notes are **fixture data**, not live SDSU or Rate My Professors data. The extension can open the official my.SDSU site and check for two student-homepage tiles after you sign in, but does not read your degree evaluation yet.
+A Chrome side-panel extension that helps plan course schedules. Its courses, sections, and instructor notes are **fixture data**, not live SDSU or Rate My Professors data. The extension can open the official my.SDSU site and recognize a student-homepage tab after you sign in, but does not read your degree evaluation yet.
 
 ## What you need
 
@@ -29,8 +29,8 @@ To load the extension in Chrome:
 1. In the side panel, click **Open my.SDSU**. This opens SDSU's official `https://my.sdsu.edu/` page.
 2. Click SDSU's **my.SDSU Login** link. Sign in on SDSU's pages and complete Duo yourself.
 3. When your student homepage is visible, leave that tab active and click **Check student homepage** in the side panel.
-4. Chrome may ask whether to allow the extension to access `cmsweb.cms.sdsu.edu`. This permission is used only to check for the Degree Evaluation and Manage Classes tile labels. The extension does not read or store login fields, credentials, Duo codes, cookies, or student records.
-5. If both tiles are detected, the panel shows **Student homepage detected**. This confirms only that the expected homepage labels are visible, not that a degree evaluation has been read.
+4. Chrome may ask whether to allow the extension to access `cmsweb.cms.sdsu.edu`. This permission is used here only to recognize the active tab's SDSU portal address. The extension does not read or store login fields, credentials, Duo codes, cookies, or student records.
+5. If that tab is on the portal's homepage URL, the panel shows **my.SDSU homepage tab detected**. This does not verify account details or read a degree evaluation.
 
 If the check cannot see the tiles, share only the non-sensitive **hostname** shown in the address bar and the status message in the side panel. Do not share your password, Duo code, student ID, or a full screenshot of your account.
 

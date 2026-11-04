@@ -91,7 +91,7 @@ export function App() {
       <p>Open SDSU’s site and sign in there with your SDSUid and Duo. When you reach your student homepage, check that tab here.</p>
       <div className="portal-actions"><button type="button" onClick={() => { void openSdsu(); }}>Open my.SDSU</button><button type="button" disabled={checkingPortal} onClick={() => { void checkPortal(); }}>{checkingPortal ? 'Checking…' : 'Check student homepage'}</button></div>
       {portalCheck && <p className={portalCheck.status === 'ready' ? 'portal-ready' : 'portal-help'} role="status">{portalCheck.message}</p>}
-      <small>The check only looks for the two homepage tiles. Sample schedules below still use invented data.</small>
+      <small>The check reads only the active tab’s SDSU address, not account content. Sample schedules below still use invented data.</small>
     </section>
 
     <section className="card" aria-label="Schedule preferences">
