@@ -18,6 +18,10 @@ export type Course = {
   prerequisites: string[];
   sections: Section[];
 };
+export type DegreeRequirement = {
+  courseId: string;
+  status: 'completed' | 'in-progress' | 'remaining';
+};
 export type Feedback = { instructor: string; note: string; rating: number; source: 'fixture' };
 export type Preferences = {
   semester: Semester;

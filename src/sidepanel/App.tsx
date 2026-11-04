@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { sampleCourses, sampleFeedback } from '../fixtures/sampleCourses';
+import { sampleCourses, sampleDegreeEvaluation, sampleFeedback } from '../fixtures/sampleCourses';
 import { DAYS, type Day, type Preferences, type Schedule, type Semester } from '../models/schedule';
+import { deriveDegreeProgress } from '../scheduler/degreeProgress';
 import { generateSchedules } from '../scheduler/generateSchedules';
 
 const currentYear = new Date().getFullYear();
 const month = new Date().getMonth();
 const semesters: Semester[] = ['Spring', 'Fall', 'Summer', 'Winter'];
 const currentSemester: Semester = month < 2 || month === 11 ? 'Winter' : month < 5 ? 'Spring' : month < 8 ? 'Summer' : 'Fall';
+const degreeProgress = deriveDegreeProgress(sampleDegreeEvaluation, sampleCourses);
 
 const initial: Preferences = {
-  semester: currentSemester, year: currentYear, targetUnits: 10, unavailableDays: [], unavailableBlocks: [],
+  semester: currentSemester, year: currentYear, targetUnits: degreeProgress.remainingUnits, unavailableDays: [], unavailableBlocks: [],
   earliest: '08:00', latest: '18:00', prioritizeDaysOff: true, prioritizeFewerVisits: true, prioritizeFeedback: false,
 };
 
@@ -37,12 +39,13 @@ export function App() {
   };
   const generate = () => {
     if (prefs.earliest >= prefs.latest) { setError('Latest end must be after earliest start.'); return; }
-    if (prefs.targetUnits < 1 || prefs.targetUnits > 21) { setError('Choose a target between 1 and 21 units.'); return; }
+    if (degreeProgress.missingCourseIds.length) { setError('Sample degree requirements have missing course data. Cannot calculate units.'); return; }
+    if (degreeProgress.remainingUnits === 0) { setError('No remaining sample courses to schedule.'); return; }
     setError('');
     setProgress('Building schedules from example sections…');
     // Let React show the progress state before the calculation.
     window.setTimeout(() => {
-      const schedules = generateSchedules(sampleCourses, prefs, sampleFeedback);
+      const schedules = generateSchedules(degreeProgress.remainingCourses, prefs, sampleFeedback);
       setResults(schedules);
       setProgress(schedules.length ? `Found ${schedules.length} sample options for ${prefs.semester} ${prefs.year}` : `No valid sample schedule found for ${prefs.semester} ${prefs.year}`);
     }, 60);
@@ -59,7 +62,7 @@ export function App() {
     <section className="card" aria-label="Schedule preferences">
       <div className="section-title"><span className="step">1</span><h2>Your preferences</h2></div>
       <div className="two-col"><label>Semester<select value={prefs.semester} onChange={(event) => update('semester', event.target.value as Semester)}>{semesters.map((semester) => <option key={semester} value={semester}>{semester}</option>)}</select></label><label>Year<select value={prefs.year} onChange={(event) => update('year', Number(event.target.value))}>{[currentYear, currentYear + 1].map((year) => <option key={year} value={year}>{year}</option>)}</select></label></div>
-      <label>Target units<input type="number" min="1" max="21" value={prefs.targetUnits} onChange={(event) => update('targetUnits', Number(event.target.value))} /></label>
+      <div className="empty" role="status">Sample degree evaluation: <strong>{degreeProgress.remainingUnits} units remaining</strong> across {degreeProgress.remainingCourses.length} courses. This total is calculated from example requirements and will be replaced by your real evaluation after SDSU integration.</div>
       <div className="field-label">Days you cannot attend</div>
       <div className="day-buttons">{DAYS.map((value) => <button key={value} type="button" aria-pressed={prefs.unavailableDays.includes(value)} className={prefs.unavailableDays.includes(value) ? 'selected' : ''} onClick={() => toggleDay(value)}>{value}</button>)}</div>
       <div className="field-label">Time you cannot attend</div>
@@ -77,7 +80,7 @@ export function App() {
     <section className="results" aria-live="polite">
       <div className="section-title"><span className="step">2</span><h2>Schedule options</h2></div>
       <p className="status">{progress}</p>
-      {results?.length === 0 && <div className="empty">No schedule fits these constraints. Try allowing another day, extending your hours, or lowering your target units.</div>}
+      {results?.length === 0 && <div className="empty">No schedule fits these constraints. Try allowing another day or extending your hours. Any unscheduled requirement still needs a later term.</div>}
       {results?.map((schedule, index) => <article className="option" key={index}>
         <div className="option-heading"><div><small>OPTION {index + 1}</small><h3>{index === 0 ? 'Best overall fit' : `Alternative ${index}`}</h3></div><strong>{schedule.units} units</strong></div>
         <div className="facts"><span>{schedule.daysOnCampus} campus days</span><span>{schedule.choices.length} courses</span></div>

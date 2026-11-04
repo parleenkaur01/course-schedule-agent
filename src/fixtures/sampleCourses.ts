@@ -1,4 +1,4 @@
-import type { Course, Feedback } from '../models/schedule';
+import type { Course, DegreeRequirement, Feedback } from '../models/schedule';
 
 // Entirely invented example offerings. Never present these as real SDSU sections.
 export const sampleCourses: Course[] = [
@@ -17,6 +17,13 @@ export const sampleCourses: Course[] = [
     { id: '02', component: 'lecture', instructor: 'Robin Diaz', seats: 'open', linkedGroup: 'B', meetings: [{ day: 'Tue', start: '15:00', end: '16:15', location: 'campus' }, { day: 'Thu', start: '15:00', end: '16:15', location: 'campus' }] },
     { id: 'L3', component: 'lab', instructor: 'Drew Singh', seats: 'open', linkedGroup: 'B', meetings: [{ day: 'Thu', start: '10:00', end: '12:00', location: 'campus' }] },
   ] },
+];
+
+// Invented degree evaluation: three remaining courses totaling 10 units.
+export const sampleDegreeEvaluation: DegreeRequirement[] = [
+  { courseId: 'CS 210', status: 'remaining' },
+  { courseId: 'MATH 245', status: 'remaining' },
+  { courseId: 'BIO 101', status: 'remaining' },
 ];
 
 export const sampleFeedback: Feedback[] = [
