@@ -1,5 +1,6 @@
 import { clickDegreeEvaluationTile } from '../sdsu/clickDegreeEvaluation';
 import { installAuditNavigator } from '../sdsu/auditNavigator';
+import { installAuditUnitReader } from '../sdsu/auditUnits';
 import { isAuditSite, isPortalLandingPage, RUN_KEY, SDSU_ENTRY_URL, type SdsuWorkflow, type WorkflowPhase } from '../sdsu/portal';
 
 // A service worker handles Chrome events even when the side panel is closed.
@@ -66,15 +67,29 @@ async function handleAuditProgress(stage: string, tabId: number | undefined): Pr
   if (stage === 'audit-page-found' || stage === 'audit-opened') void chrome.notifications?.clear('sdsu-sign-in').catch(() => {});
 }
 
+async function handleAuditUnits(units: number, tabId: number | undefined): Promise<void> {
+  if (!Number.isFinite(units) || units < 0 || units > 240) return;
+  const run = await getRun();
+  if (!run || run.auditTabId !== tabId || run.phase === 'awaiting-sign-in' || run.phase === 'stopped') return;
+  await saveRun({ ...run, auditUnits: units });
+}
+
 async function advanceFromAuditSite(tabId: number, tab: chrome.tabs.Tab): Promise<void> {
   if (!isAuditSite(tab.url)) return;
   const run = await getRun();
-  if (!run || run.phase === 'awaiting-sign-in' || run.phase === 'audit-opened' || run.phase === 'stopped' || Date.now() - run.startedAt > 15 * 60 * 1000) return;
+  if (!run || run.phase === 'awaiting-sign-in' || run.phase === 'stopped' || Date.now() - run.startedAt > 15 * 60 * 1000) return;
+  if (run.phase === 'audit-opened') {
+    if (run.auditTabId === tabId) {
+      try { await chrome.scripting.executeScript({ target: { tabId }, func: installAuditUnitReader }); } catch { /* The panel will keep showing that the total is unconfirmed. */ }
+    }
+    return;
+  }
   const keepCurrentStep = run.auditTabId === tabId && (run.phase === 'running-audit' || run.phase === 'opening-audit');
   await saveRun(keepCurrentStep
     ? { ...run, auditTabId: tabId }
     : { ...run, auditTabId: tabId, phase: 'audit-page-found', message: 'Degree Evaluation site opened. Checking the next step…' });
   void chrome.notifications?.clear('sdsu-sign-in').catch(() => {});
+  try { await chrome.scripting.executeScript({ target: { tabId }, func: installAuditUnitReader }); } catch { /* Audit navigation can continue. */ }
   try {
     await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: installAuditNavigator, args: [run.runAttempted === true] });
   } catch {
@@ -119,14 +134,18 @@ async function advanceFromHomepage(tabId: number, tab: chrome.tabs.Tab): Promise
 async function startWorkflow(): Promise<void> {
   const [active] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   const windowId = active?.windowId ?? chrome.windows.WINDOW_ID_CURRENT;
+  const auditOpen = isAuditSite(active?.url);
   const run: SdsuWorkflow = {
-    phase: 'awaiting-sign-in',
-    message: 'Waiting for you to finish SDSU sign-in and Duo…',
+    phase: auditOpen ? 'audit-page-found' : 'awaiting-sign-in',
+    message: auditOpen ? 'Checking the open Degree Evaluation page…' : 'Waiting for you to finish SDSU sign-in and Duo…',
     windowId,
     startedAt: Date.now(),
+    auditTabId: auditOpen ? active?.id : undefined,
   };
   await saveRun(run);
-  if (active?.id && isPortalLandingPage(active.url)) {
+  if (active?.id && auditOpen) {
+    await advanceFromAuditSite(active.id, active);
+  } else if (active?.id && isPortalLandingPage(active.url)) {
     await advanceFromHomepage(active.id, active);
   } else {
     await chrome.tabs.create({ url: SDSU_ENTRY_URL, windowId });
@@ -135,6 +154,13 @@ async function startWorkflow(): Promise<void> {
 
 let auditProgressQueue = Promise.resolve();
 chrome.runtime.onMessage.addListener((message: { type?: string }, _sender, sendResponse) => {
+  if (message.type === 'SDSU_AUDIT_UNITS') {
+    const units = (message as { units?: unknown }).units;
+    if (typeof units === 'number' && isAuditSite(_sender.tab?.url) && _sender.frameId === 0) {
+      auditProgressQueue = auditProgressQueue.then(() => handleAuditUnits(units, _sender.tab?.id)).catch(() => {});
+    }
+    return;
+  }
   if (message.type === 'SDSU_AUDIT_PROGRESS') {
     const stage = (message as { phase?: string }).phase;
     if (stage && isAuditSite(_sender.tab?.url)) {

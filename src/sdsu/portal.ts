@@ -12,6 +12,7 @@ export type SdsuWorkflow = {
   windowId: number;
   startedAt: number;
   auditTabId?: number;
+  auditUnits?: number;
   runAttempted?: boolean;
 };
 

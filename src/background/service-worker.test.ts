@@ -36,10 +36,14 @@ describe('SDSU browser workflow', () => {
 
     onUpdated?.(9, { status: 'complete', url: 'https://sdsu.uachieve.com/selfservice/audit/create.html' }, { id: 9, windowId: 4 });
     await vi.waitFor(() => expect(stored?.auditTabId).toBe(9));
+    onMessage?.({ type: 'SDSU_AUDIT_UNITS', units: 10 } as { type: string }, { tab: { id: 9, url: 'https://sdsu.uachieve.com/selfservice/audit/create.html' }, frameId: 0 }, vi.fn());
+    await vi.waitFor(() => expect(stored?.auditUnits).toBe(10));
+    onMessage?.({ type: 'SDSU_AUDIT_UNITS', units: 99 } as { type: string }, { tab: { id: 9, url: 'https://example.com/audit' }, frameId: 0 }, vi.fn());
+    expect(stored?.auditUnits).toBe(10);
     onMessage?.({ type: 'SDSU_AUDIT_PROGRESS', phase: 'running-audit' } as { type: string }, { tab: { id: 9, url: 'https://sdsu.uachieve.com/selfservice/audit/create.html' } }, vi.fn());
     await vi.waitFor(() => expect(stored?.runAttempted).toBe(true));
     onUpdated?.(9, { status: 'complete', url: 'https://sdsu.uachieve.com/selfservice/audit/create.html' }, { id: 9, windowId: 4 });
-    await vi.waitFor(() => expect(executeScript).toHaveBeenCalledTimes(3));
+    await vi.waitFor(() => expect(executeScript).toHaveBeenCalledTimes(5));
     expect(stored?.phase).toBe('running-audit');
   });
 
@@ -64,5 +68,25 @@ describe('SDSU browser workflow', () => {
     finishPortal([{ result: 'clicked' }]);
     await response;
     expect(stored?.phase).toBe('audit-page-found');
+  });
+
+  it('reads an audit tab that was already open when the workflow starts', async () => {
+    let onMessage: ((message: { type: string }, sender: unknown, sendResponse: (response: { ok: boolean }) => void) => boolean | void) | undefined;
+    let stored: SdsuWorkflow | undefined;
+    const executeScript = vi.fn().mockResolvedValue([]);
+    vi.stubGlobal('chrome', {
+      runtime: { onInstalled: { addListener: vi.fn() }, onMessage: { addListener: (listener: typeof onMessage) => { onMessage = listener; } } },
+      sidePanel: { setPanelBehavior: vi.fn() },
+      tabs: { query: vi.fn().mockResolvedValue([{ id: 12, windowId: 4, url: 'https://sdsu.uachieve.com/selfservice/audit/view.html' }]), onUpdated: { addListener: vi.fn() } },
+      storage: { session: { get: vi.fn().mockImplementation(async () => ({ [RUN_KEY]: stored })), set: vi.fn().mockImplementation(async (value: Record<string, SdsuWorkflow>) => { stored = value[RUN_KEY]; }) } },
+      scripting: { executeScript },
+    });
+    await import('./service-worker');
+    const response = await new Promise<{ ok: boolean }>((resolve) => onMessage?.({ type: 'START_SDSU_WORKFLOW' }, {}, resolve));
+    expect(response.ok).toBe(true);
+    expect(stored?.auditTabId).toBe(12);
+    expect(executeScript).toHaveBeenCalledWith(expect.objectContaining({ target: { tabId: 12 } }));
+    onMessage?.({ type: 'SDSU_AUDIT_UNITS', units: 8 } as { type: string }, { tab: { id: 12, url: 'https://sdsu.uachieve.com/selfservice/audit/view.html' }, frameId: 0 }, vi.fn());
+    await vi.waitFor(() => expect(stored?.auditUnits).toBe(8));
   });
 });

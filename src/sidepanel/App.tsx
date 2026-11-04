@@ -50,6 +50,7 @@ export function App() {
   const [workflow, setWorkflow] = useState<SdsuWorkflow | null>(null);
   const [portalMessage, setPortalMessage] = useState('Ready to open my.SDSU.');
   const [startingPortal, setStartingPortal] = useState(false);
+  const [showTargetInfo, setShowTargetInfo] = useState(false);
 
   useEffect(() => {
     if (typeof chrome === 'undefined' || !chrome.storage?.session) return;
@@ -138,7 +139,9 @@ export function App() {
     <section className="card" aria-label="Schedule preferences">
       <div className="section-title"><span className="step">1</span><h2>Your preferences</h2></div>
       <div className="two-col"><label>Semester<select value={prefs.semester} onChange={(event) => update('semester', event.target.value as Semester)}>{semesters.map((semester) => <option key={semester} value={semester}>{semester}</option>)}</select></label><label>Year<select value={prefs.year} onChange={(event) => update('year', Number(event.target.value))}>{[currentYear, currentYear + 1].map((year) => <option key={year} value={year}>{year}</option>)}</select></label></div>
-      <div className="empty" role="status">Sample degree evaluation: <strong>{degreeProgress.remainingUnits} units remaining</strong> across {degreeProgress.remainingCourses.length} courses. This total is calculated from example requirements and will be replaced by your real evaluation after SDSU integration.</div>
+      <button type="button" className="target-button" aria-expanded={showTargetInfo} onClick={() => setShowTargetInfo((shown) => !shown)}>Target: {workflow?.auditUnits === undefined ? 'waiting for audit' : `${workflow.auditUnits} units`}</button>
+      {showTargetInfo && <p className="target-explanation">{workflow?.auditUnits === undefined ? 'Open your Degree Evaluation audit. The extension will read the remaining units shown near Minimum Units; it will leave the target unconfirmed if the number is unclear.' : 'Read from the remaining units shown in your opened SDSU Degree Evaluation audit. This is the total shown there, not a chosen semester load.'}</p>}
+      <div className="empty" role="status">{workflow?.auditUnits === undefined ? 'Real SDSU target: not confirmed yet. ' : `Real SDSU target: ${workflow.auditUnits} units remaining. `}Sample scheduling below still uses {degreeProgress.remainingUnits} invented units across {degreeProgress.remainingCourses.length} example courses.</div>
       <div className="field-label">Days you can attend class</div>
       <p className="availability-hint">Green = available. Tap a day to turn it off.</p>
       <div className="day-buttons" role="group" aria-label="Available days">{DAYS.map((value) => {
