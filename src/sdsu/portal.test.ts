@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPortalLandingPage } from './portal';
+import { isAuditSite, isPortalLandingPage } from './portal';
 
 describe('isPortalLandingPage', () => {
   it('recognizes the student homepage URL seen in Chrome', () => {
@@ -11,5 +11,13 @@ describe('isPortalLandingPage', () => {
     expect(isPortalLandingPage('https://cmsweb.cms.sdsu.edu/psc/CSDPRD/EMPLOYEE/SA/s/WEBLIB_PTBR.ISCRIPT1.FieldFormula.IScript_StartPage')).toBe(false);
     expect(isPortalLandingPage('https://example.com/psc/PT_LANDINGPAGE.GBL')).toBe(false);
     expect(isPortalLandingPage(undefined)).toBe(false);
+  });
+});
+
+describe('isAuditSite', () => {
+  it('matches only the confirmed SDSU uAchieve hostname', () => {
+    expect(isAuditSite('https://sdsu.uachieve.com/selfservice/audit/create.html')).toBe(true);
+    expect(isAuditSite('https://other.uachieve.com/selfservice/audit/create.html')).toBe(false);
+    expect(isAuditSite('https://sdsu.uachieve.com.evil.example/audit')).toBe(false);
   });
 });

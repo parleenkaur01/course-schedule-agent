@@ -8,14 +8,23 @@ afterEach(() => {
 
 describe('clickDegreeEvaluationTile', () => {
   it('clicks the visible Degree Evaluation control and returns no page content', async () => {
+    vi.useFakeTimers();
     const click = vi.fn();
+    const control = (textContent: string, action: () => void) => ({
+      textContent, getClientRects: () => [{}], getBoundingClientRect: () => ({ top: 100, left: 100 }),
+      scrollIntoView: vi.fn(), style: { outline: '' }, isConnected: true, click: action,
+    });
     vi.stubGlobal('document', {
+      documentElement: { appendChild: vi.fn() },
+      createElement: () => ({ style: {}, remove: vi.fn(), animate: vi.fn(), textContent: '' }),
       querySelectorAll: () => [
-        { textContent: 'Financial Aid', getClientRects: () => [{}], click: vi.fn() },
-        { textContent: 'Degree Evaluation', getClientRects: () => [{}], click },
+        control('Financial Aid', vi.fn()),
+        control('Degree Evaluation', click),
       ],
     });
-    expect(await clickDegreeEvaluationTile()).toBe('clicked');
+    const outcome = clickDegreeEvaluationTile();
+    await vi.advanceTimersByTimeAsync(800);
+    expect(await outcome).toBe('clicked');
     expect(click).toHaveBeenCalledOnce();
   });
 

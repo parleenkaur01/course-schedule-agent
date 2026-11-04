@@ -4,9 +4,9 @@
   "description": "Plan sample course schedules and open my.SDSU Degree Evaluation after sign-in.",
   "version": "0.1.0",
   "minimum_chrome_version": "114",
-  "permissions": ["sidePanel", "storage"],
+  "permissions": ["sidePanel", "storage", "notifications"],
   "optional_permissions": ["scripting"],
-  "optional_host_permissions": ["https://cmsweb.cms.sdsu.edu/*"],
+  "optional_host_permissions": ["https://cmsweb.cms.sdsu.edu/*", "https://sdsu.uachieve.com/*"],
   "action": { "default_title": "Open course scheduler" },
   "side_panel": { "default_path": "sidepanel.html" },
   "background": { "service_worker": "service-worker.js" }

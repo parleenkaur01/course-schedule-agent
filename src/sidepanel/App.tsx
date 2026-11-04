@@ -3,7 +3,7 @@ import { sampleCourses, sampleDegreeEvaluation, sampleFeedback } from '../fixtur
 import { DAYS, TIME_WINDOWS, type Day, type Preferences, type Schedule, type Semester, type TimeWindowId } from '../models/schedule';
 import { deriveDegreeProgress } from '../scheduler/degreeProgress';
 import { generateSchedules } from '../scheduler/generateSchedules';
-import { PORTAL_ORIGIN, RUN_KEY, type SdsuWorkflow } from '../sdsu/portal';
+import { AUDIT_ORIGIN, PORTAL_ORIGIN, RUN_KEY, type SdsuWorkflow } from '../sdsu/portal';
 
 const currentYear = new Date().getFullYear();
 const month = new Date().getMonth();
@@ -22,6 +22,22 @@ const timeChoices = Array.from({ length: 65 }, (_, index) => {
   const minutes = 6 * 60 + index * 15;
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 });
+const workflowSteps = ['Sign in on SDSU', 'Open Degree Evaluation', 'Select degree program', 'Run program', 'View audit'];
+function workflowStepIndex(workflow: SdsuWorkflow | null): number {
+  if (!workflow) return -1;
+  switch (workflow.phase) {
+    case 'awaiting-sign-in': return 0;
+    case 'opening-degree-evaluation': return 1;
+    case 'tile-clicked':
+    case 'sign-in-needed': return 2;
+    case 'audit-page-found':
+    case 'selecting-program': return 2;
+    case 'running-audit': return 3;
+    case 'opening-audit': return 4;
+    case 'audit-opened': return 5;
+    default: return workflow.runAttempted ? 4 : 2;
+  }
+}
 
 export function App() {
   const [prefs, setPrefs] = useState<Preferences>(initial);
@@ -55,7 +71,7 @@ export function App() {
     setStartingPortal(true);
     try {
       // Request site access directly from the button click, before opening SDSU.
-      const granted = await chrome.permissions.request({ permissions: ['scripting'], origins: [PORTAL_ORIGIN] });
+      const granted = await chrome.permissions.request({ permissions: ['scripting'], origins: [PORTAL_ORIGIN, AUDIT_ORIGIN] });
       if (!granted) {
         setPortalMessage('Chrome access was not granted. Allow portal access when you are ready to try again.');
         return;
@@ -112,10 +128,11 @@ export function App() {
 
     <section className="card portal-card" aria-label="Connect to my.SDSU">
       <div className="section-title"><span className="step">↗</span><h2>Connect to my.SDSU</h2></div>
-      <p>Start here, then sign in and complete Duo on SDSU’s pages. Once the student homepage appears, the extension will look for and open Degree Evaluation while showing its progress here.</p>
+      <p>Start here, then sign in and complete Duo on SDSU’s pages. The agent will open Degree Evaluation, run your declared program, and open its audit while showing each step.</p>
       <div className="portal-actions"><button type="button" disabled={startingPortal || workflow?.phase === 'awaiting-sign-in' || workflow?.phase === 'opening-degree-evaluation'} onClick={() => { void startPortal(); }}>{startingPortal ? 'Starting…' : 'Start SDSU workflow'}</button></div>
-      <p className={workflow?.phase === 'tile-clicked' ? 'portal-ready' : 'portal-help'} role="status">{workflow?.message ?? portalMessage}</p>
-      <small>The extension uses only the SDSU portal site to open the tile. Another SDSU sign-in may appear. Sample schedules below still use invented data.</small>
+      <p className={workflow?.phase === 'audit-opened' ? 'portal-ready' : 'portal-help'} role="status">{workflow?.message ?? portalMessage}</p>
+      <ol className="workflow-steps">{workflowSteps.map((step, index) => <li key={step} className={index < workflowStepIndex(workflow) ? 'done' : index === workflowStepIndex(workflow) ? 'active' : ''}>{step}</li>)}</ol>
+      <small>If SDSU asks you to sign in again, enter your SDSUid and complete Duo on SDSU’s page. An on-page arrow highlights each automated click. Sample schedules below still use invented data.</small>
     </section>
 
     <section className="card" aria-label="Schedule preferences">

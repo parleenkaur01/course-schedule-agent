@@ -1,6 +1,6 @@
 # SDSU Course Schedule Agent
 
-A Chrome side-panel extension that helps plan course schedules. Its courses, sections, and instructor notes are **fixture data**, not live SDSU or Rate My Professors data. The extension can open my.SDSU and open its Degree Evaluation tile after you sign in, but does not read your degree evaluation yet.
+A Chrome side-panel extension that helps plan course schedules. Its courses, sections, and instructor notes are **fixture data**, not live SDSU or Rate My Professors data. The extension can open my.SDSU, navigate Degree Evaluation, run a declared program, and open the audit after you sign in. It does not interpret degree requirements yet.
 
 ## What you need
 
@@ -26,12 +26,13 @@ To load the extension in Chrome:
 
 ## Try the my.SDSU connection
 
-1. In the side panel, click **Start SDSU workflow**. Chrome may request access to `cmsweb.cms.sdsu.edu`; grant it to let the extension recognize the portal and open its Degree Evaluation tile. If you already have the student homepage open, the workflow can start there.
+1. In the side panel, click **Start SDSU workflow**. Chrome may request access to `cmsweb.cms.sdsu.edu` and `sdsu.uachieve.com`; grant it to let the extension navigate those two sites. If you already have the student homepage open, the workflow can start there.
 2. Otherwise, the extension opens SDSU's official `https://my.sdsu.edu/` page. Click SDSU's **my.SDSU Login** link. Sign in on SDSU's pages and complete Duo yourself.
-3. Leave the side panel open. It shows **Waiting for you to finish SDSU sign-in and Duo**, then **Student homepage found. Opening Degree Evaluation**, then whether it clicked the tile.
-4. If SDSU prompts for another sign-in or Duo after opening the tile, complete it on SDSU's page. The extension does not read or store login fields, credentials, Duo codes, cookies, or student records.
+3. Leave the side panel open. It shows the current step: sign-in, open Degree Evaluation, select program, run program, and view audit. A temporary arrow and outline show where the extension is about to click.
+4. If another SDSU sign-in appears, complete it on SDSU's page. The panel shows the instruction, and Chrome may display a system notification. The extension does not read or store login fields, credentials, Duo codes, cookies, or student records.
+5. If there are several degree programs or several completed audits, choose the correct one yourself. The extension resumes after the page changes.
 
-The workflow waits up to 15 minutes for a student homepage in the same Chrome window. It checks the portal URL and looks only for the Degree Evaluation tile. Clicking the tile is not proof that the evaluation page loaded; that page may use a different SDSU domain, which is not granted access in this milestone.
+The workflow waits up to 15 minutes for a student homepage. It recognizes the confirmed uAchieve audit hostname `sdsu.uachieve.com` and clicks controls only when there is a unique visible match. Student names, audit text, form values, and credentials are not sent in progress messages or stored. The automated audit steps still require your first live browser test because the signed-in page structure is unavailable locally.
 
 If the check cannot see the tiles, share only the non-sensitive **hostname** shown in the address bar and the status message in the side panel. Do not share your password, Duo code, student ID, or a full screenshot of your account.
 
@@ -45,4 +46,4 @@ The side panel gathers preferences, including a semester and the current or foll
 
 ## Next milestone
 
-After you confirm the tile opens in Chrome, we will inspect the Degree Evaluation and Manage Classes pages in your browser session, then implement an extraction adapter. Degree Evaluation may use another domain, so its permission will be added only after the domain is identified. Never share a password or Duo code.
+After you confirm the audit opens in Chrome, we will inspect the audit's requirements and the Manage Classes page in your browser session, then implement extraction adapters. Never share a password or Duo code.
