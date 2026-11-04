@@ -1,3 +1,5 @@
+import type { AuditReport } from './auditInspector';
+
 export const SDSU_ENTRY_URL = 'https://my.sdsu.edu/';
 export const PORTAL_ORIGIN = 'https://cmsweb.cms.sdsu.edu/*';
 export const AUDIT_ORIGIN = 'https://sdsu.uachieve.com/*';
@@ -12,7 +14,7 @@ export type SdsuWorkflow = {
   windowId: number;
   startedAt: number;
   auditTabId?: number;
-  auditUnits?: number;
+  auditReport?: AuditReport;
   runAttempted?: boolean;
 };
 

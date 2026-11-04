@@ -51,6 +51,9 @@ export function App() {
   const [portalMessage, setPortalMessage] = useState('Ready to open my.SDSU.');
   const [startingPortal, setStartingPortal] = useState(false);
   const [showTargetInfo, setShowTargetInfo] = useState(false);
+  const audit = workflow?.auditReport;
+  const chart = audit?.snapshot;
+  const target = chart?.notMet;
 
   useEffect(() => {
     if (typeof chrome === 'undefined' || !chrome.storage?.session) return;
@@ -139,9 +142,17 @@ export function App() {
     <section className="card" aria-label="Schedule preferences">
       <div className="section-title"><span className="step">1</span><h2>Your preferences</h2></div>
       <div className="two-col"><label>Semester<select value={prefs.semester} onChange={(event) => update('semester', event.target.value as Semester)}>{semesters.map((semester) => <option key={semester} value={semester}>{semester}</option>)}</select></label><label>Year<select value={prefs.year} onChange={(event) => update('year', Number(event.target.value))}>{[currentYear, currentYear + 1].map((year) => <option key={year} value={year}>{year}</option>)}</select></label></div>
-      <button type="button" className="target-button" aria-expanded={showTargetInfo} onClick={() => setShowTargetInfo((shown) => !shown)}>Target: {workflow?.auditUnits === undefined ? 'waiting for audit' : `${workflow.auditUnits} units`}</button>
-      {showTargetInfo && <p className="target-explanation">{workflow?.auditUnits === undefined ? 'Open your Degree Evaluation audit. The extension will scroll to Snapshot and subtract earned units from required units; it will leave the target unconfirmed if the numbers are unclear.' : 'Calculated from the Snapshot circle in your SDSU audit: required units minus earned units. This is the degree total left, not a chosen semester load.'}</p>}
-      <div className="empty" role="status">{workflow?.auditUnits === undefined ? 'Real SDSU target: not confirmed yet. ' : `Real SDSU target: ${workflow.auditUnits} units remaining. `}Sample scheduling below still uses {degreeProgress.remainingUnits} invented units across {degreeProgress.remainingCourses.length} example courses.</div>
+      <button type="button" className="target-button" aria-expanded={showTargetInfo} onClick={() => setShowTargetInfo((shown) => !shown)}>Target: {target === undefined ? 'checking audit' : `${target} not-met units`}</button>
+      {showTargetInfo && <p className="target-explanation">{target === undefined ? 'The extension is checking the Snapshot chart and the unmet requirements. It will not guess from the counted/required circle alone.' : 'This is the Not Met part of the Snapshot chart. In-progress units still need to be completed, and specific unmet course requirements may need more units than this minimum.'}</p>}
+      {audit && <div className="audit-findings" aria-label="Degree Evaluation findings">
+        <strong>Audit Snapshot</strong>
+        <div className="audit-counts"><span>Complete: {chart?.complete ?? 'unconfirmed'}</span><span>In progress: {chart?.inProgress ?? 'unconfirmed'}</span><span>Not met: {chart?.notMet ?? 'unconfirmed'}</span></div>
+        {chart?.counted !== undefined && chart.required !== undefined && <p>Circle: {chart.counted} / {chart.required} units counted. The categories above explain that number.</p>}
+        <strong>Unmet requirements</strong>
+        {audit.missing.length ? <ul>{audit.missing.map((item, index) => <li key={`${item.section}-${index}`}><span>{item.section}</span>{item.courses.length > 0 && <small>Course options shown: {item.courses.join(', ')}</small>}</li>)}</ul> : <p>No specific missing course IDs could be confirmed from the visible sections. Review the audit’s red or Not Met sections directly.</p>}
+        <p>{audit.reviewedSections} section headings reviewed. Course options may be alternatives; the audit and an advisor remain the source for graduation requirements.</p>
+      </div>}
+      <div className="empty" role="status">{target === undefined ? 'Real SDSU target: not confirmed yet. ' : `Audit chart shows ${target} units Not Met. `}Sample scheduling below still uses {degreeProgress.remainingUnits} invented units across {degreeProgress.remainingCourses.length} example courses.</div>
       <div className="field-label">Days you can attend class</div>
       <p className="availability-hint">Green = available. Tap a day to turn it off.</p>
       <div className="day-buttons" role="group" aria-label="Available days">{DAYS.map((value) => {

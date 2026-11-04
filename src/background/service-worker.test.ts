@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RUN_KEY, type SdsuWorkflow } from '../sdsu/portal';
 
+const sampleReport = { snapshot: { counted: 116, required: 120, complete: 101, inProgress: 15, notMet: 4 }, missing: [{ section: 'Writing requirement', courses: ['RWS 305W'] }], reviewedSections: 8 };
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.resetModules();
@@ -36,10 +38,6 @@ describe('SDSU browser workflow', () => {
 
     onUpdated?.(9, { status: 'complete', url: 'https://sdsu.uachieve.com/selfservice/audit/create.html' }, { id: 9, windowId: 4 });
     await vi.waitFor(() => expect(stored?.auditTabId).toBe(9));
-    onMessage?.({ type: 'SDSU_AUDIT_UNITS', units: 10 } as { type: string }, { tab: { id: 9, url: 'https://sdsu.uachieve.com/selfservice/audit/create.html' }, frameId: 0 }, vi.fn());
-    await vi.waitFor(() => expect(stored?.auditUnits).toBe(10));
-    onMessage?.({ type: 'SDSU_AUDIT_UNITS', units: 99 } as { type: string }, { tab: { id: 9, url: 'https://example.com/audit' }, frameId: 0 }, vi.fn());
-    expect(stored?.auditUnits).toBe(10);
     onMessage?.({ type: 'SDSU_AUDIT_PROGRESS', phase: 'running-audit' } as { type: string }, { tab: { id: 9, url: 'https://sdsu.uachieve.com/selfservice/audit/create.html' } }, vi.fn());
     await vi.waitFor(() => expect(stored?.runAttempted).toBe(true));
     onUpdated?.(9, { status: 'complete', url: 'https://sdsu.uachieve.com/selfservice/audit/create.html' }, { id: 9, windowId: 4 });
@@ -47,7 +45,13 @@ describe('SDSU browser workflow', () => {
     expect(stored?.phase).toBe('running-audit');
     onMessage?.({ type: 'SDSU_AUDIT_PROGRESS', phase: 'audit-opened' } as { type: string }, { tab: { id: 9, url: 'https://sdsu.uachieve.com/selfservice/audit/read.html' } }, vi.fn());
     await vi.waitFor(() => expect(stored?.phase).toBe('audit-opened'));
-    expect(stored?.message).toBe('Audit Snapshot checked: 10 units remaining.');
+    onMessage?.({ type: 'SDSU_AUDIT_REPORT', report: sampleReport } as { type: string }, { tab: { id: 9, url: 'https://sdsu.uachieve.com/selfservice/audit/read.html' }, frameId: 0 }, vi.fn());
+    await vi.waitFor(() => expect(stored?.auditReport?.snapshot.notMet).toBe(4));
+    expect(stored?.auditReport?.missing[0].courses).toEqual(['RWS 305W']);
+    onMessage?.({ type: 'SDSU_AUDIT_REPORT', report: { ...sampleReport, snapshot: { ...sampleReport.snapshot, notMet: 99 } } } as { type: string }, { tab: { id: 9, url: 'https://example.com/audit' }, frameId: 0 }, vi.fn());
+    expect(stored?.auditReport?.snapshot.notMet).toBe(4);
+    onMessage?.({ type: 'SDSU_AUDIT_REPORT', report: { ...sampleReport, snapshot: { ...sampleReport.snapshot, notMet: 99 } } } as { type: string }, { tab: { id: 9, url: 'https://sdsu.uachieve.com/selfservice/audit/read.html' }, frameId: 0 }, vi.fn());
+    await vi.waitFor(() => expect(stored?.auditReport?.snapshot.notMet).toBeUndefined());
   });
 
   it('does not replace newer audit progress when the original tile click finishes late', async () => {
@@ -89,7 +93,7 @@ describe('SDSU browser workflow', () => {
     expect(response.ok).toBe(true);
     expect(stored?.auditTabId).toBe(12);
     expect(executeScript).toHaveBeenCalledWith(expect.objectContaining({ target: { tabId: 12 } }));
-    onMessage?.({ type: 'SDSU_AUDIT_UNITS', units: 8 } as { type: string }, { tab: { id: 12, url: 'https://sdsu.uachieve.com/selfservice/audit/view.html' }, frameId: 0 }, vi.fn());
-    await vi.waitFor(() => expect(stored?.auditUnits).toBe(8));
+    onMessage?.({ type: 'SDSU_AUDIT_REPORT', report: sampleReport } as { type: string }, { tab: { id: 12, url: 'https://sdsu.uachieve.com/selfservice/audit/view.html' }, frameId: 0 }, vi.fn());
+    await vi.waitFor(() => expect(stored?.auditReport?.snapshot.notMet).toBe(4));
   });
 });

@@ -1,6 +1,6 @@
 import { clickDegreeEvaluationTile } from '../sdsu/clickDegreeEvaluation';
 import { installAuditNavigator } from '../sdsu/auditNavigator';
-import { installAuditUnitReader } from '../sdsu/auditUnits';
+import { installAuditInspector, type AuditReport } from '../sdsu/auditInspector';
 import { isAuditSite, isPortalLandingPage, RUN_KEY, SDSU_ENTRY_URL, type SdsuWorkflow, type WorkflowPhase } from '../sdsu/portal';
 
 // A service worker handles Chrome events even when the side panel is closed.
@@ -54,24 +54,39 @@ const auditProgress: Record<string, { phase: WorkflowPhase; message: string }> =
   'audit-choice-needed': { phase: 'needs-action', message: 'Several View Audit links are shown. Please choose the correct audit on SDSU’s page.' },
   'opening-audit': { phase: 'opening-audit', message: 'Clicking View Audit on the visible page…' },
   'audit-opened': { phase: 'audit-opened', message: 'Audit view detected. The extension has not read or interpreted degree requirements yet.' },
+  'inspecting-snapshot': { phase: 'audit-opened', message: 'Hovering over the Snapshot chart to read complete, in-progress, and not-met units…' },
+  'inspecting-requirements': { phase: 'audit-opened', message: 'Opening and scrolling through audit sections to find unmet course requirements…' },
+  'audit-inspection-limited': { phase: 'needs-action', message: 'The audit could not be fully inspected. Check the chart and incomplete sections on SDSU’s page.' },
 };
 
 async function handleAuditProgress(stage: string, tabId: number | undefined): Promise<void> {
   const update = auditProgress[stage];
   const run = await getRun();
   if (!update || !run || run.auditTabId !== tabId) return;
-  if (run.phase === 'audit-opened') return;
+  if (run.auditReport && ['inspecting-snapshot', 'inspecting-requirements'].includes(stage)) return;
+  if (run.phase === 'audit-opened' && !['inspecting-snapshot', 'inspecting-requirements', 'audit-inspection-limited'].includes(stage)) return;
   if (run.runAttempted && ['audit-page-found', 'program-choice-needed', 'selecting-program'].includes(stage)) return;
   if (run.phase === 'opening-audit' && stage === 'waiting-for-audit') return;
-  await saveRun({ ...run, ...update, message: stage === 'audit-opened' && run.auditUnits !== undefined ? `Audit Snapshot checked: ${run.auditUnits} units remaining.` : update.message, runAttempted: run.runAttempted || stage === 'running-audit' });
+  await saveRun({ ...run, ...update, runAttempted: run.runAttempted || stage === 'running-audit' });
   if (stage === 'audit-page-found' || stage === 'audit-opened') void chrome.notifications?.clear('sdsu-sign-in').catch(() => {});
 }
 
-async function handleAuditUnits(units: number, tabId: number | undefined): Promise<void> {
-  if (!Number.isFinite(units) || units < 0 || units > 240) return;
+async function handleAuditReport(report: AuditReport, tabId: number | undefined): Promise<void> {
   const run = await getRun();
   if (!run || run.auditTabId !== tabId || run.phase === 'awaiting-sign-in' || run.phase === 'stopped') return;
-  await saveRun({ ...run, auditUnits: units, message: run.phase === 'audit-opened' ? `Audit Snapshot checked: ${units} units remaining.` : run.message });
+  const { complete, inProgress, notMet, required } = report.snapshot;
+  const verified = [complete, inProgress, notMet, required].every((value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 240)
+    && Math.abs((complete ?? 0) + (inProgress ?? 0) + (notMet ?? 0) - (required ?? 0)) < 0.01
+    && (report.snapshot.counted === undefined || Math.abs(report.snapshot.counted - (complete ?? 0) - (inProgress ?? 0)) < 0.01);
+  const safeReport: AuditReport = {
+    snapshot: { ...report.snapshot, notMet: verified ? notMet : undefined },
+    missing: report.missing.slice(0, 40).filter((item) => item && typeof item.section === 'string' && Array.isArray(item.courses))
+      .map((item) => ({ section: item.section.slice(0, 100), courses: item.courses.filter((course) => typeof course === 'string' && /^[A-Z&]{2,6}\s?\d{2,4}[A-Z]?$/.test(course)).slice(0, 12) })),
+    reviewedSections: Number.isFinite(report.reviewedSections) ? Math.max(0, Math.min(35, report.reviewedSections)) : 0,
+  };
+  await saveRun({ ...run, auditReport: safeReport, phase: 'audit-opened', message: verified
+    ? `Audit inspected: ${complete} complete, ${inProgress} in progress, ${notMet} not met. Review the course requirements below.`
+    : 'Audit sections inspected. The chart breakdown needs review before a target can be confirmed.' });
 }
 
 async function advanceFromAuditSite(tabId: number, tab: chrome.tabs.Tab): Promise<void> {
@@ -80,7 +95,7 @@ async function advanceFromAuditSite(tabId: number, tab: chrome.tabs.Tab): Promis
   if (!run || run.phase === 'awaiting-sign-in' || run.phase === 'stopped' || Date.now() - run.startedAt > 15 * 60 * 1000) return;
   if (run.phase === 'audit-opened') {
     if (run.auditTabId === tabId) {
-      try { await chrome.scripting.executeScript({ target: { tabId }, func: installAuditUnitReader }); } catch { /* The panel will keep showing that the total is unconfirmed. */ }
+      try { await chrome.scripting.executeScript({ target: { tabId }, func: installAuditInspector }); } catch { /* The panel will keep showing that the audit is unconfirmed. */ }
     }
     return;
   }
@@ -89,7 +104,7 @@ async function advanceFromAuditSite(tabId: number, tab: chrome.tabs.Tab): Promis
     ? { ...run, auditTabId: tabId }
     : { ...run, auditTabId: tabId, phase: 'audit-page-found', message: 'Degree Evaluation site opened. Checking the next step…' });
   void chrome.notifications?.clear('sdsu-sign-in').catch(() => {});
-  try { await chrome.scripting.executeScript({ target: { tabId }, func: installAuditUnitReader }); } catch { /* Audit navigation can continue. */ }
+  try { await chrome.scripting.executeScript({ target: { tabId }, func: installAuditInspector }); } catch { /* Audit navigation can continue. */ }
   try {
     await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: installAuditNavigator, args: [run.runAttempted === true] });
   } catch {
@@ -154,10 +169,10 @@ async function startWorkflow(): Promise<void> {
 
 let auditProgressQueue = Promise.resolve();
 chrome.runtime.onMessage.addListener((message: { type?: string }, _sender, sendResponse) => {
-  if (message.type === 'SDSU_AUDIT_UNITS') {
-    const units = (message as { units?: unknown }).units;
-    if (typeof units === 'number' && isAuditSite(_sender.tab?.url) && _sender.frameId === 0) {
-      auditProgressQueue = auditProgressQueue.then(() => handleAuditUnits(units, _sender.tab?.id)).catch(() => {});
+  if (message.type === 'SDSU_AUDIT_REPORT') {
+    const report = (message as { report?: AuditReport }).report;
+    if (report?.snapshot && Array.isArray(report.missing) && typeof report.reviewedSections === 'number' && isAuditSite(_sender.tab?.url) && _sender.frameId === 0) {
+      auditProgressQueue = auditProgressQueue.then(() => handleAuditReport(report, _sender.tab?.id)).catch(() => {});
     }
     return;
   }
