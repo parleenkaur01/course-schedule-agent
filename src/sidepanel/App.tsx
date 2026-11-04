@@ -12,7 +12,8 @@ const degreeProgress = deriveDegreeProgress(sampleDegreeEvaluation, sampleCourse
 
 const initial: Preferences = {
   semester: currentSemester, year: currentYear, targetUnits: degreeProgress.remainingUnits, unavailableDays: [], unavailableBlocks: [],
-  timeWindows: ['morning', 'afternoon', 'evening', 'night'], prioritizeDaysOff: true, prioritizeFewerVisits: true, prioritizeFeedback: false,
+  timeWindows: ['morning', 'afternoon', 'evening', 'night'], prioritizeDaysOff: true, minimizeCampusGaps: true,
+  instructorStyle: { grading: 'any', assignments: 'any', attendance: 'any' },
 };
 
 const pretty = (time: string) => new Date(`2000-01-01T${time}:00`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -37,6 +38,8 @@ export function App() {
   };
   const toggleDay = (value: Day) => update('unavailableDays', prefs.unavailableDays.includes(value) ? prefs.unavailableDays.filter((item) => item !== value) : [...prefs.unavailableDays, value]);
   const toggleTimeWindow = (value: TimeWindowId) => update('timeWindows', prefs.timeWindows.includes(value) ? prefs.timeWindows.filter((item) => item !== value) : [...prefs.timeWindows, value]);
+  const updateStyle = <K extends keyof Preferences['instructorStyle']>(key: K, value: Preferences['instructorStyle'][K]) =>
+    update('instructorStyle', { ...prefs.instructorStyle, [key]: value });
   const changeBlockStart = (value: string) => {
     setBlockStart(value);
     if (value >= blockEnd) setBlockEnd(timeChoices[Math.min(timeChoices.indexOf(value) + 4, timeChoices.length - 1)]);
@@ -87,9 +90,15 @@ export function App() {
         {prefs.unavailableBlocks.length > 0 && <div className="chips">{prefs.unavailableBlocks.map((block, index) => <button key={`${block.day}-${block.start}-${index}`} type="button" onClick={() => update('unavailableBlocks', prefs.unavailableBlocks.filter((_, item) => item !== index))} aria-label={`Remove ${block.day} ${block.start} to ${block.end}`}>{block.day} {pretty(block.start)}–{pretty(block.end)} ×</button>)}</div>}
       </details>
       <div className="field-label">What matters most?</div>
-      <label className="checkbox"><input type="checkbox" checked={prefs.prioritizeDaysOff} onChange={(event) => update('prioritizeDaysOff', event.target.checked)} />More days off</label>
-      <label className="checkbox"><input type="checkbox" checked={prefs.prioritizeFewerVisits} onChange={(event) => update('prioritizeFewerVisits', event.target.checked)} />Fewer campus visits</label>
-      <label className="checkbox"><input type="checkbox" checked={prefs.prioritizeFeedback} onChange={(event) => update('prioritizeFeedback', event.target.checked)} />Example instructor feedback</label>
+      <label className="checkbox"><input type="checkbox" checked={prefs.minimizeCampusGaps} onChange={(event) => update('minimizeCampusGaps', event.target.checked)} />Shorter gaps between campus classes</label>
+      <p className="availability-hint">For example, avoid waiting from 10:50 AM until 2 PM between classes.</p>
+      <label className="checkbox"><input type="checkbox" checked={prefs.prioritizeDaysOff} onChange={(event) => update('prioritizeDaysOff', event.target.checked)} />More days off campus</label>
+      <p className="availability-hint">Group classes on fewer weekdays when possible.</p>
+      <div className="field-label">Instructor style (optional)</div>
+      <p className="availability-hint">Based only on invented example student reports in this demo.</p>
+      <label>Grading<select value={prefs.instructorStyle.grading} onChange={(event) => updateStyle('grading', event.target.value as Preferences['instructorStyle']['grading'])}><option value="any">No preference</option><option value="easier">Easier grading reported</option><option value="stricter">Stricter grading reported</option></select></label>
+      <label>Assignments<select value={prefs.instructorStyle.assignments} onChange={(event) => updateStyle('assignments', event.target.value as Preferences['instructorStyle']['assignments'])}><option value="any">No preference</option><option value="lighter">Lighter workload reported</option><option value="heavier">Heavier workload reported</option></select></label>
+      <label>Attendance<select value={prefs.instructorStyle.attendance} onChange={(event) => updateStyle('attendance', event.target.value as Preferences['instructorStyle']['attendance'])}><option value="any">No preference</option><option value="flexible">Flexible attendance reported</option><option value="mandatory">Mandatory attendance reported</option></select></label>
       {error && <p className="error" role="alert">{error}</p>}
       <button className="primary" onClick={generate}>Generate sample schedules <span aria-hidden="true">→</span></button>
     </section>
@@ -100,7 +109,7 @@ export function App() {
       {results?.length === 0 && <div className="empty">No schedule fits these constraints. Try allowing another day or extending your hours. Any unscheduled requirement still needs a later term.</div>}
       {results?.map((schedule, index) => <article className="option" key={index}>
         <div className="option-heading"><div><small>OPTION {index + 1}</small><h3>{index === 0 ? 'Best overall fit' : `Alternative ${index}`}</h3></div><strong>{schedule.units} units</strong></div>
-        <div className="facts"><span>{schedule.daysOnCampus} campus days</span><span>{schedule.choices.length} courses</span></div>
+        <div className="facts"><span>{schedule.daysOnCampus} campus days</span><span>{schedule.campusGapMinutes} min between campus classes</span><span>{schedule.choices.length} courses</span></div>
         <div className="week">{DAYS.map((value) => {
           const meetings = schedule.choices.flatMap((choice) => choice.sections.flatMap((section) => section.meetings.filter((meeting) => meeting.day === value).map((meeting) => ({ course: choice.course.id, section: section.id, meeting }))));
           meetings.sort((a, b) => a.meeting.start.localeCompare(b.meeting.start));

@@ -39,21 +39,34 @@ function valid(choices: Choice[], preferences: Preferences): boolean {
 function describe(choices: Choice[], preferences: Preferences, feedback: Feedback[]): Schedule {
   const units = choices.reduce((sum, choice) => sum + choice.course.units, 0);
   const meetings = choices.flatMap((choice) => choice.sections.flatMap((section) => section.meetings));
-  const daysOnCampus = new Set(meetings.filter((meeting) => meeting.location === 'campus').map((meeting) => meeting.day)).size;
-  const averageRating = choices.flatMap((choice) => choice.sections.filter((section) => section.component === 'lecture'))
-    .map((section) => feedback.find((item) => item.instructor === section.instructor)?.rating)
-    .filter((rating): rating is number => rating !== undefined);
-  const rating = averageRating.length ? averageRating.reduce((sum, value) => sum + value, 0) / averageRating.length : 0;
+  const campusMeetings = meetings.filter((meeting) => meeting.location === 'campus');
+  const daysOnCampus = new Set(campusMeetings.map((meeting) => meeting.day)).size;
+  const campusGapMinutes = DAYS.reduce((total, day) => {
+    const dayMeetings = campusMeetings.filter((meeting) => meeting.day === day).sort((a, b) => a.start.localeCompare(b.start));
+    return total + dayMeetings.slice(1).reduce((sum, meeting, index) => sum + Math.max(0, minutes(meeting.start) - minutes(dayMeetings[index].end)), 0);
+  }, 0);
+  const instructorNotes = choices.flatMap((choice) => choice.sections.filter((section) => section.component === 'lecture'))
+    .map((section) => feedback.find((item) => item.instructor === section.instructor));
+  const styleSelections = (['grading', 'assignments', 'attendance'] as const)
+    .filter((key) => preferences.instructorStyle[key] !== 'any');
+  const styleMatches = instructorNotes.reduce((sum, note) => sum + styleSelections.filter((key) => note?.[key] === preferences.instructorStyle[key]).length, 0);
+  const styleMismatches = instructorNotes.reduce((sum, note) => sum + styleSelections.filter((key) => note?.[key] && note[key] !== preferences.instructorStyle[key]).length, 0);
+  const styleUnknown = instructorNotes.reduce((sum, note) => sum + styleSelections.filter((key) => !note?.[key]).length, 0);
   const daysOff = DAYS.length - new Set(meetings.map((meeting) => meeting.day)).size;
   const score = units * 20 - Math.abs(preferences.targetUnits - units) * 8 +
-    (preferences.prioritizeDaysOff ? daysOff * 6 : 0) +
-    (preferences.prioritizeFewerVisits ? (5 - daysOnCampus) * 6 : 0) +
-    (preferences.prioritizeFeedback ? rating * 4 : 0);
+    (preferences.prioritizeDaysOff ? daysOff * 10 : 0) -
+    (preferences.minimizeCampusGaps ? campusGapMinutes / 10 : 0) +
+    styleMatches * 9 - styleMismatches * 9;
+  const reasons = [`${units} of ${preferences.targetUnits} remaining units`, `${daysOff} class-free weekday${daysOff === 1 ? '' : 's'}`, `${daysOnCampus} campus day${daysOnCampus === 1 ? '' : 's'}`, `${campusGapMinutes} min waiting between campus classes`];
+  if (styleSelections.length) reasons.push(`${styleMatches} sample instructor-style match${styleMatches === 1 ? '' : 'es'}`);
+  const tradeoffs = [];
+  if (units < preferences.targetUnits) tradeoffs.push('Some remaining courses would need another term.');
+  if (campusGapMinutes >= 90) tradeoffs.push('One or more days have a long break between campus classes.');
+  if (styleMismatches) tradeoffs.push('Some sample instructor feedback differs from your style choices.');
+  if (styleUnknown) tradeoffs.push('Some selected instructor-style details are unknown in the sample feedback.');
+  if (!tradeoffs.length) tradeoffs.push('Check exact section times and instructor notes before choosing.');
   return {
-    choices, units, score, daysOnCampus,
-    reasons: [`${units} of ${preferences.targetUnits} target units`, `${daysOff} weekday${daysOff === 1 ? '' : 's'} without class`, `${daysOnCampus} campus visit day${daysOnCampus === 1 ? '' : 's'}`],
-    tradeoffs: [units < preferences.targetUnits ? 'Below your target units; try allowing more time or a later end.' :
-      daysOnCampus >= 4 ? 'Classes are spread over most weekdays.' : 'Compare instructor notes and section times before choosing.'],
+    choices, units, score, daysOnCampus, campusGapMinutes, reasons, tradeoffs,
   };
 }
 

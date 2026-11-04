@@ -27,10 +27,10 @@ export const sampleDegreeEvaluation: DegreeRequirement[] = [
 ];
 
 export const sampleFeedback: Feedback[] = [
-  { instructor: 'Alex Rivera', rating: 4.4, note: 'Example student reports praise clear explanations.', source: 'fixture' },
-  { instructor: 'Morgan Lee', rating: 4.8, note: 'Example student reports mention helpful office hours.', source: 'fixture' },
-  { instructor: 'Jordan Kim', rating: 4.2, note: 'Example student reports mention frequent quizzes.', source: 'fixture' },
-  { instructor: 'Taylor Chen', rating: 4.5, note: 'Example student reports praise organized lectures.', source: 'fixture' },
-  { instructor: 'Sam Patel', rating: 4.1, note: 'Example student reports mention a steady workload.', source: 'fixture' },
-  { instructor: 'Robin Diaz', rating: 4.7, note: 'Example student reports praise detailed feedback.', source: 'fixture' },
+  { instructor: 'Alex Rivera', rating: 4.4, note: 'Invented student reports describe easier grading, lighter assignments, and flexible attendance.', grading: 'easier', assignments: 'lighter', attendance: 'flexible', source: 'fixture' },
+  { instructor: 'Morgan Lee', rating: 4.8, note: 'Invented student reports describe stricter grading, heavier assignments, and mandatory attendance.', grading: 'stricter', assignments: 'heavier', attendance: 'mandatory', source: 'fixture' },
+  { instructor: 'Jordan Kim', rating: 4.2, note: 'Invented student reports describe stricter grading and heavier assignments.', grading: 'stricter', assignments: 'heavier', source: 'fixture' },
+  { instructor: 'Taylor Chen', rating: 4.5, note: 'Invented student reports describe easier grading, lighter assignments, and flexible attendance.', grading: 'easier', assignments: 'lighter', attendance: 'flexible', source: 'fixture' },
+  { instructor: 'Sam Patel', rating: 4.1, note: 'Invented student reports describe heavier assignments and mandatory attendance.', assignments: 'heavier', attendance: 'mandatory', source: 'fixture' },
+  { instructor: 'Robin Diaz', rating: 4.7, note: 'Invented student reports describe easier grading and flexible attendance.', grading: 'easier', attendance: 'flexible', source: 'fixture' },
 ];

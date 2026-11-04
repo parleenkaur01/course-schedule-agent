@@ -29,7 +29,18 @@ export type DegreeRequirement = {
   courseId: string;
   status: 'completed' | 'in-progress' | 'remaining';
 };
-export type Feedback = { instructor: string; note: string; rating: number; source: 'fixture' };
+export type GradingStyle = 'easier' | 'stricter';
+export type AssignmentStyle = 'lighter' | 'heavier';
+export type AttendanceStyle = 'flexible' | 'mandatory';
+export type Feedback = {
+  instructor: string;
+  note: string;
+  rating: number;
+  source: 'fixture';
+  grading?: GradingStyle;
+  assignments?: AssignmentStyle;
+  attendance?: AttendanceStyle;
+};
 export type Preferences = {
   semester: Semester;
   year: number;
@@ -38,8 +49,12 @@ export type Preferences = {
   unavailableBlocks: { day: Day; start: string; end: string }[];
   timeWindows: TimeWindowId[];
   prioritizeDaysOff: boolean;
-  prioritizeFewerVisits: boolean;
-  prioritizeFeedback: boolean;
+  minimizeCampusGaps: boolean;
+  instructorStyle: {
+    grading: GradingStyle | 'any';
+    assignments: AssignmentStyle | 'any';
+    attendance: AttendanceStyle | 'any';
+  };
 };
 export type Choice = { course: Course; sections: Section[] };
-export type Schedule = { choices: Choice[]; units: number; score: number; daysOnCampus: number; reasons: string[]; tradeoffs: string[] };
+export type Schedule = { choices: Choice[]; units: number; score: number; daysOnCampus: number; campusGapMinutes: number; reasons: string[]; tradeoffs: string[] };
