@@ -63,7 +63,7 @@ async function handleAuditProgress(stage: string, tabId: number | undefined): Pr
   if (run.phase === 'audit-opened') return;
   if (run.runAttempted && ['audit-page-found', 'program-choice-needed', 'selecting-program'].includes(stage)) return;
   if (run.phase === 'opening-audit' && stage === 'waiting-for-audit') return;
-  await saveRun({ ...run, ...update, runAttempted: run.runAttempted || stage === 'running-audit' });
+  await saveRun({ ...run, ...update, message: stage === 'audit-opened' && run.auditUnits !== undefined ? `Audit Snapshot checked: ${run.auditUnits} units remaining.` : update.message, runAttempted: run.runAttempted || stage === 'running-audit' });
   if (stage === 'audit-page-found' || stage === 'audit-opened') void chrome.notifications?.clear('sdsu-sign-in').catch(() => {});
 }
 
@@ -71,7 +71,7 @@ async function handleAuditUnits(units: number, tabId: number | undefined): Promi
   if (!Number.isFinite(units) || units < 0 || units > 240) return;
   const run = await getRun();
   if (!run || run.auditTabId !== tabId || run.phase === 'awaiting-sign-in' || run.phase === 'stopped') return;
-  await saveRun({ ...run, auditUnits: units });
+  await saveRun({ ...run, auditUnits: units, message: run.phase === 'audit-opened' ? `Audit Snapshot checked: ${units} units remaining.` : run.message });
 }
 
 async function advanceFromAuditSite(tabId: number, tab: chrome.tabs.Tab): Promise<void> {

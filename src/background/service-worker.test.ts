@@ -45,6 +45,9 @@ describe('SDSU browser workflow', () => {
     onUpdated?.(9, { status: 'complete', url: 'https://sdsu.uachieve.com/selfservice/audit/create.html' }, { id: 9, windowId: 4 });
     await vi.waitFor(() => expect(executeScript).toHaveBeenCalledTimes(5));
     expect(stored?.phase).toBe('running-audit');
+    onMessage?.({ type: 'SDSU_AUDIT_PROGRESS', phase: 'audit-opened' } as { type: string }, { tab: { id: 9, url: 'https://sdsu.uachieve.com/selfservice/audit/read.html' } }, vi.fn());
+    await vi.waitFor(() => expect(stored?.phase).toBe('audit-opened'));
+    expect(stored?.message).toBe('Audit Snapshot checked: 10 units remaining.');
   });
 
   it('does not replace newer audit progress when the original tile click finishes late', async () => {

@@ -1,6 +1,6 @@
 # SDSU Course Schedule Agent
 
-A Chrome side-panel extension that helps plan course schedules. Its courses, sections, and instructor notes are **fixture data**, not live SDSU or Rate My Professors data. The extension can open my.SDSU, navigate Degree Evaluation, run a declared program, open the audit after you sign in, and read a clear remaining-units number from its Minimum Units summary. It does not interpret course requirements yet.
+A Chrome side-panel extension that helps plan course schedules. Its courses, sections, and instructor notes are **fixture data**, not live SDSU or Rate My Professors data. The extension can open my.SDSU, navigate Degree Evaluation, run a declared program, open the audit after you sign in, and calculate remaining units from its Snapshot circle. It does not interpret course requirements yet.
 
 ## What you need
 
@@ -31,7 +31,7 @@ To load the extension in Chrome:
 3. Leave the side panel open. It shows the current step: sign-in, open Degree Evaluation, select program, run program, and view audit. A temporary arrow and outline show where the extension is about to click.
 4. If another SDSU sign-in appears, complete it on SDSU's page. The panel shows the instruction, and Chrome may display a system notification. The extension does not read or store login fields, credentials, Duo codes, cookies, or student records.
 5. If there are several degree programs or several completed audits, choose the correct one yourself. The extension resumes after the page changes.
-6. Once the audit opens, look at **Target** in the side panel. It shows the number from the audit's Minimum Units summary if the extension can identify one clear total. If the chart shows only percentages or conflicting totals, Target stays unconfirmed.
+6. Once the audit opens, the page scrolls to **SNAPSHOT**. The extension reads the earned / required Units circle and shows the difference in **Target**. For example, 116 / 120 Units means 4 units left. If the chart shows only percentages or conflicting totals, Target stays unconfirmed.
 
 The workflow waits up to 15 minutes for a student homepage. It recognizes the confirmed uAchieve audit hostname `sdsu.uachieve.com` and clicks controls only when there is a unique visible match. The audit reader inspects the visible summary locally and sends only a numeric unit total to the extension. Student names, audit text, form values, and credentials are not sent in progress messages or stored. The automated audit steps and unit reader still require your first live browser test because the signed-in page structure is unavailable locally.
 

@@ -18,6 +18,31 @@ function readFrom(bodyText: string, labels: string[] = []) {
 }
 
 describe('audit unit reader', () => {
+  it('subtracts the Snapshot circle values even when another chart says Not Met 10', () => {
+    const sendMessage = readFrom('Minimum Units Not Met 10 SNAPSHOT 116 / 120 Units 3.808 GPA');
+    expect(sendMessage).toHaveBeenCalledWith({ type: 'SDSU_AUDIT_UNITS', units: 4 });
+  });
+
+  it('scrolls the Snapshot heading into view before reading the circle', () => {
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    const scrollIntoView = vi.fn();
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('document', {
+      body: { innerText: 'SNAPSHOT 116 / 120 Units' }, documentElement: {},
+      querySelectorAll: (selector: string) => selector.startsWith('h1,') ? [{ textContent: 'SNAPSHOT', scrollIntoView }] : [],
+    });
+    vi.stubGlobal('MutationObserver', class { observe() {} });
+    vi.stubGlobal('chrome', { runtime: { sendMessage } });
+    installAuditUnitReader();
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(sendMessage).toHaveBeenCalledWith({ type: 'SDSU_AUDIT_UNITS', units: 4 });
+  });
+
+  it('shows zero when earned units exceed the required minimum', () => {
+    const sendMessage = readFrom('SNAPSHOT 122 / 120 Units');
+    expect(sendMessage).toHaveBeenCalledWith({ type: 'SDSU_AUDIT_UNITS', units: 0 });
+  });
+
   it('reads the Not Met number in the Minimum Units chart and sends only a number', () => {
     const sendMessage = readFrom('Minimum Units Complete 110 In Progress 0 Not Met 10 GPA Requirements');
     expect(sendMessage).toHaveBeenCalledWith({ type: 'SDSU_AUDIT_UNITS', units: 10 });
