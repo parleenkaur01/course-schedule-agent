@@ -4,7 +4,7 @@ import type { Course, Preferences } from '../models/schedule';
 import { generateSchedules } from './generateSchedules';
 
 const preferences: Preferences = {
-  semester: 'Fall', year: 2026, targetUnits: 10, unavailableDays: [], unavailableBlocks: [], earliest: '08:00', latest: '18:00',
+  semester: 'Fall', year: 2026, targetUnits: 10, unavailableDays: [], unavailableBlocks: [], timeWindows: ['morning', 'afternoon', 'evening', 'night'],
   prioritizeDaysOff: true, prioritizeFewerVisits: true, prioritizeFeedback: false,
 };
 
@@ -34,6 +34,16 @@ describe('generateSchedules', () => {
     const schedules = generateSchedules(sampleCourses, { ...preferences, unavailableDays: ['Fri'], unavailableBlocks: [{ day: 'Mon', start: '08:30', end: '10:00' }] });
     expect(schedules.length).toBeGreaterThan(0);
     expect(schedules.every((schedule) => schedule.choices.every((choice) => choice.sections.every((section) => section.meetings.every((meeting) => meeting.day !== 'Fri' && !(meeting.day === 'Mon' && meeting.start === '09:00')))))).toBe(true);
+  });
+
+  it('keeps classes inside selected periods and allows a class across adjoining selected periods', () => {
+    const course: Course = { id: 'A', title: 'A', units: 3, prerequisites: [], sections: [
+      { id: 'morning', component: 'lecture', instructor: 'A', seats: 'open', meetings: [{ day: 'Mon', start: '11:30', end: '12:15', location: 'campus' }] },
+      { id: 'afternoon', component: 'lecture', instructor: 'B', seats: 'open', meetings: [{ day: 'Tue', start: '13:00', end: '14:00', location: 'campus' }] },
+    ] };
+    expect(generateSchedules([course], { ...preferences, timeWindows: ['morning'] })).toEqual([]);
+    expect(generateSchedules([course], { ...preferences, timeWindows: ['afternoon'] })[0].choices[0].sections[0].id).toBe('afternoon');
+    expect(generateSchedules([course], { ...preferences, timeWindows: ['morning', 'afternoon'] }).some((schedule) => schedule.choices[0].sections[0].id === 'morning')).toBe(true);
   });
 
   it('excludes full sections and unconfirmed prerequisites', () => {

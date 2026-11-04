@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { sampleCourses, sampleDegreeEvaluation, sampleFeedback } from '../fixtures/sampleCourses';
-import { DAYS, type Day, type Preferences, type Schedule, type Semester } from '../models/schedule';
+import { DAYS, TIME_WINDOWS, type Day, type Preferences, type Schedule, type Semester, type TimeWindowId } from '../models/schedule';
 import { deriveDegreeProgress } from '../scheduler/degreeProgress';
 import { generateSchedules } from '../scheduler/generateSchedules';
 
@@ -12,7 +12,7 @@ const degreeProgress = deriveDegreeProgress(sampleDegreeEvaluation, sampleCourse
 
 const initial: Preferences = {
   semester: currentSemester, year: currentYear, targetUnits: degreeProgress.remainingUnits, unavailableDays: [], unavailableBlocks: [],
-  earliest: '08:00', latest: '18:00', prioritizeDaysOff: true, prioritizeFewerVisits: true, prioritizeFeedback: false,
+  timeWindows: ['morning', 'afternoon', 'evening', 'night'], prioritizeDaysOff: true, prioritizeFewerVisits: true, prioritizeFeedback: false,
 };
 
 const pretty = (time: string) => new Date(`2000-01-01T${time}:00`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -36,6 +36,7 @@ export function App() {
     setProgress('Ready to plan with example data');
   };
   const toggleDay = (value: Day) => update('unavailableDays', prefs.unavailableDays.includes(value) ? prefs.unavailableDays.filter((item) => item !== value) : [...prefs.unavailableDays, value]);
+  const toggleTimeWindow = (value: TimeWindowId) => update('timeWindows', prefs.timeWindows.includes(value) ? prefs.timeWindows.filter((item) => item !== value) : [...prefs.timeWindows, value]);
   const changeBlockStart = (value: string) => {
     setBlockStart(value);
     if (value >= blockEnd) setBlockEnd(timeChoices[Math.min(timeChoices.indexOf(value) + 4, timeChoices.length - 1)]);
@@ -47,7 +48,7 @@ export function App() {
     update('unavailableBlocks', [...prefs.unavailableBlocks, { day, start: blockStart, end: blockEnd }]);
   };
   const generate = () => {
-    if (prefs.earliest >= prefs.latest) { setError('Latest end must be after earliest start.'); return; }
+    if (prefs.timeWindows.length === 0) { setError('Choose at least one class time period.'); return; }
     if (degreeProgress.missingCourseIds.length) { setError('Sample degree requirements have missing course data. Cannot calculate units.'); return; }
     if (degreeProgress.remainingUnits === 0) { setError('No remaining sample courses to schedule.'); return; }
     setError('');
@@ -78,11 +79,13 @@ export function App() {
         const available = !prefs.unavailableDays.includes(value);
         return <button key={value} type="button" aria-pressed={available} className={available ? 'selected' : ''} onClick={() => toggleDay(value)}>{value}</button>;
       })}</div>
-      <div className="field-label">Busy during part of a day?</div>
-      <p className="availability-hint">Choose a day and time range, then add it. You can remove it below.</p>
-      <div className="time-block"><select aria-label="Busy day" value={day} onChange={(event) => setDay(event.target.value as Day)}>{DAYS.map((value) => <option key={value}>{value}</option>)}</select><select aria-label="Busy from" value={blockStart} onChange={(event) => changeBlockStart(event.target.value)}>{timeChoices.slice(0, -1).map((time) => <option key={time} value={time}>{pretty(time)}</option>)}</select><select aria-label="Busy until" value={blockEnd} onChange={(event) => setBlockEnd(event.target.value)}>{timeChoices.filter((time) => time > blockStart).map((time) => <option key={time} value={time}>{pretty(time)}</option>)}</select><button type="button" onClick={addBlock}>Add</button></div>
-      {prefs.unavailableBlocks.length > 0 && <div className="chips">{prefs.unavailableBlocks.map((block, index) => <button key={`${block.day}-${block.start}-${index}`} type="button" onClick={() => update('unavailableBlocks', prefs.unavailableBlocks.filter((_, item) => item !== index))} aria-label={`Remove ${block.day} ${block.start} to ${block.end}`}>{block.day} {pretty(block.start)}–{pretty(block.end)} ×</button>)}</div>}
-      <div className="two-col"><label>Earliest class start<select value={prefs.earliest} onChange={(event) => update('earliest', event.target.value)}>{timeChoices.slice(0, -1).map((time) => <option key={time} value={time}>{pretty(time)}</option>)}</select></label><label>Latest class end<select value={prefs.latest} onChange={(event) => update('latest', event.target.value)}>{timeChoices.slice(1).map((time) => <option key={time} value={time}>{pretty(time)}</option>)}</select></label></div>
+      <div className="field-label">Class times that work for you</div>
+      <p className="availability-hint">Check one or more. Classes must fit within the periods you select.</p>
+      <div className="time-window-options">{TIME_WINDOWS.map((window) => <label className="time-window" key={window.id}><input type="checkbox" checked={prefs.timeWindows.includes(window.id)} onChange={() => toggleTimeWindow(window.id)} /><span><strong>{window.label}</strong><small>{window.hours}</small></span></label>)}</div>
+      <details className="busy-details"><summary>Have a specific busy time? (optional)</summary><p className="availability-hint">Choose a day and time range, then add it.</p>
+        <div className="time-block"><select aria-label="Busy day" value={day} onChange={(event) => setDay(event.target.value as Day)}>{DAYS.map((value) => <option key={value}>{value}</option>)}</select><select aria-label="Busy from" value={blockStart} onChange={(event) => changeBlockStart(event.target.value)}>{timeChoices.slice(0, -1).map((time) => <option key={time} value={time}>{pretty(time)}</option>)}</select><select aria-label="Busy until" value={blockEnd} onChange={(event) => setBlockEnd(event.target.value)}>{timeChoices.filter((time) => time > blockStart).map((time) => <option key={time} value={time}>{pretty(time)}</option>)}</select><button type="button" onClick={addBlock}>Add</button></div>
+        {prefs.unavailableBlocks.length > 0 && <div className="chips">{prefs.unavailableBlocks.map((block, index) => <button key={`${block.day}-${block.start}-${index}`} type="button" onClick={() => update('unavailableBlocks', prefs.unavailableBlocks.filter((_, item) => item !== index))} aria-label={`Remove ${block.day} ${block.start} to ${block.end}`}>{block.day} {pretty(block.start)}–{pretty(block.end)} ×</button>)}</div>}
+      </details>
       <div className="field-label">What matters most?</div>
       <label className="checkbox"><input type="checkbox" checked={prefs.prioritizeDaysOff} onChange={(event) => update('prioritizeDaysOff', event.target.checked)} />More days off</label>
       <label className="checkbox"><input type="checkbox" checked={prefs.prioritizeFewerVisits} onChange={(event) => update('prioritizeFewerVisits', event.target.checked)} />Fewer campus visits</label>

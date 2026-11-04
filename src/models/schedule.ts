@@ -1,6 +1,13 @@
 export type Day = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri';
 export const DAYS: Day[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 export type Semester = 'Spring' | 'Summer' | 'Fall' | 'Winter';
+export const TIME_WINDOWS = [
+  { id: 'morning', label: 'Morning', hours: '6 AM–12 PM', start: '06:00', end: '12:00' },
+  { id: 'afternoon', label: 'Afternoon', hours: '12–4 PM', start: '12:00', end: '16:00' },
+  { id: 'evening', label: 'Evening', hours: '4–7 PM', start: '16:00', end: '19:00' },
+  { id: 'night', label: 'Night', hours: '7–10 PM', start: '19:00', end: '22:00' },
+] as const;
+export type TimeWindowId = typeof TIME_WINDOWS[number]['id'];
 export type Meeting = { day: Day; start: string; end: string; location: 'campus' | 'online' };
 export type Component = 'lecture' | 'lab' | 'discussion';
 export type Section = {
@@ -29,8 +36,7 @@ export type Preferences = {
   targetUnits: number;
   unavailableDays: Day[];
   unavailableBlocks: { day: Day; start: string; end: string }[];
-  earliest: string;
-  latest: string;
+  timeWindows: TimeWindowId[];
   prioritizeDaysOff: boolean;
   prioritizeFewerVisits: boolean;
   prioritizeFeedback: boolean;

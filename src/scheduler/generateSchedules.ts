@@ -1,8 +1,18 @@
-import { DAYS, type Choice, type Course, type Feedback, type Meeting, type Preferences, type Schedule, type Section } from '../models/schedule';
+import { DAYS, TIME_WINDOWS, type Choice, type Course, type Feedback, type Meeting, type Preferences, type Schedule, type Section } from '../models/schedule';
 
 const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
 const overlaps = (a: Pick<Meeting, 'day' | 'start' | 'end'>, b: Pick<Meeting, 'day' | 'start' | 'end'>) =>
   a.day === b.day && minutes(a.start) < minutes(b.end) && minutes(b.start) < minutes(a.end);
+
+function fitsTimeWindows(meeting: Meeting, preferences: Preferences): boolean {
+  const windows = TIME_WINDOWS.filter((window) => preferences.timeWindows.includes(window.id));
+  let coveredUntil = minutes(meeting.start);
+  for (const window of windows) {
+    if (minutes(window.start) <= coveredUntil && minutes(window.end) > coveredUntil) coveredUntil = minutes(window.end);
+    if (coveredUntil >= minutes(meeting.end)) return true;
+  }
+  return false;
+}
 
 function bundles(course: Course): Section[][] {
   const lectures = course.sections.filter((section) => section.component === 'lecture' && section.seats === 'open');
@@ -21,7 +31,7 @@ function bundles(course: Course): Section[][] {
 function valid(choices: Choice[], preferences: Preferences): boolean {
   const meetings = choices.flatMap((choice) => choice.sections.flatMap((section) => section.meetings));
   if (meetings.some((meeting) => preferences.unavailableDays.includes(meeting.day) ||
-    minutes(meeting.start) < minutes(preferences.earliest) || minutes(meeting.end) > minutes(preferences.latest) ||
+    !fitsTimeWindows(meeting, preferences) ||
     preferences.unavailableBlocks.some((block) => overlaps(meeting, block)))) return false;
   return meetings.every((meeting, index) => meetings.slice(index + 1).every((other) => !overlaps(meeting, other)));
 }
